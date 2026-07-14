@@ -1,0 +1,5772 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Goable API",
+    "version": "0.0.0",
+    "description": "Multi-tenant suitability scoring for outdoor activities across water, snow, air, and land families. Real-time forecast scoring, probabilistic ensembles, LLM intelligence narratives, historical + climate-decadal projections, personalized decision agent, counterfactual analysis, and parametric underwriting.",
+    "contact": {
+      "name": "Goable",
+      "url": "https://goable.io"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.goable.io",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "apiKey": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Goable-Key",
+        "description": "API key issued per tenant — canonical production header is `X-Goable-Key`. The API also accepts `Authorization: Bearer <key>` for legacy callers but new integrations should use the X-Goable-Key form. Format: 48-char token; prefix (first 16 chars) is DB-indexed, full token SHA-256 hashed. Mint a key from the tenant portal at https://console.goable.io/portal/keys."
+      }
+    },
+    "schemas": {
+      "GeoPoint": {
+        "type": "object",
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "lat": {
+            "type": "number",
+            "example": 36.0133
+          },
+          "lng": {
+            "type": "number",
+            "example": -5.6044
+          }
+        }
+      },
+      "TimeWindow": {
+        "type": "object",
+        "required": [
+          "from",
+          "to"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Machine-readable error code"
+          },
+          "message": {
+            "type": "string"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "detail": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "Verdict": {
+        "type": "string",
+        "enum": [
+          "unsafe",
+          "poor",
+          "marginal",
+          "fair",
+          "favorable",
+          "excellent"
+        ]
+      },
+      "ScoreResponse": {
+        "type": "object",
+        "required": [
+          "score",
+          "verdict",
+          "confidence",
+          "breakdown",
+          "physics",
+          "alerts",
+          "eco"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/Verdict"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "breakdown": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "number"
+                },
+                "suitability": {
+                  "type": "number"
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "contribution": {
+                  "type": "number"
+                },
+                "hasData": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "physics": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "info",
+                    "warning",
+                    "critical"
+                  ]
+                },
+                "code": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "eco": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "distribution": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Present on ensemble requests"
+          },
+          "confidenceDetail": {
+            "$ref": "#/components/schemas/ConfidenceDetailForecast"
+          },
+          "calibration_provenance": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CalibrationProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "assimilation": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "ScoreSeriesResponse": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "series"
+        ],
+        "properties": {
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "score",
+                "verdict"
+              ],
+              "properties": {
+                "at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "score": {
+                  "type": "number"
+                },
+                "verdict": {
+                  "$ref": "#/components/schemas/Verdict"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ScoreMultiResponse": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "activity",
+                "score",
+                "verdict"
+              ],
+              "properties": {
+                "activity": {
+                  "type": "string"
+                },
+                "score": {
+                  "type": "number"
+                },
+                "verdict": {
+                  "$ref": "#/components/schemas/Verdict"
+                }
+              }
+            }
+          }
+        }
+      },
+      "CalibrationProvenance": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "sub-spot",
+              "cluster",
+              "region",
+              "base"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "scoring_profile_slug": {
+            "type": "string"
+          },
+          "sub_spot_slug": {
+            "type": "string"
+          },
+          "distance_to_sub_spot_m": {
+            "type": "number"
+          },
+          "tier": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "tier_source": {
+            "type": "string",
+            "enum": [
+              "catalog",
+              "classifier"
+            ]
+          }
+        }
+      },
+      "CalibrationProvenanceSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "level",
+          "n_local",
+          "shrinkage_weight_from_parent"
+        ],
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "base",
+              "region",
+              "cluster",
+              "sub-spot"
+            ]
+          },
+          "n_local": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "shrinkage_weight_from_parent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "DriftFlag": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "severity",
+          "since_timestamp"
+        ],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "watch",
+              "warning",
+              "critical"
+            ]
+          },
+          "since_timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConfidenceDetail": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ConfidenceDetailForecast"
+          },
+          {
+            "$ref": "#/components/schemas/ConfidenceDetailHistorical"
+          },
+          {
+            "$ref": "#/components/schemas/ConfidenceDetailClimate"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "mode",
+          "mapping": {
+            "forecast": "#/components/schemas/ConfidenceDetailForecast",
+            "historical": "#/components/schemas/ConfidenceDetailHistorical",
+            "climate": "#/components/schemas/ConfidenceDetailClimate"
+          }
+        }
+      },
+      "ConfidenceDetailForecast": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "mode",
+          "forecast_skill",
+          "provider_agreement",
+          "profile_maturity",
+          "hierarchical_calibration"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "forecast"
+            ]
+          },
+          "forecast_skill": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "provider_agreement": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "profile_maturity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "hierarchical_calibration": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "calibration_provenance": {
+            "$ref": "#/components/schemas/CalibrationProvenanceSummary"
+          },
+          "skill_calibration": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "applied",
+              "n_train",
+              "cohort_hash",
+              "scalar"
+            ],
+            "properties": {
+              "applied": {
+                "type": "boolean"
+              },
+              "n_train": {
+                "type": "integer"
+              },
+              "cohort_hash": {
+                "type": "string"
+              },
+              "scalar": {
+                "type": "number",
+                "minimum": 0.85,
+                "maximum": 1
+              }
+            }
+          },
+          "drift_flag": {
+            "$ref": "#/components/schemas/DriftFlag"
+          }
+        }
+      },
+      "ConfidenceDetailHistorical": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "mode",
+          "sample_size_confidence",
+          "base_climatology_quality",
+          "calibration_confidence",
+          "hierarchical_calibration"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "historical"
+            ]
+          },
+          "sample_size_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "base_climatology_quality": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "calibration_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "hierarchical_calibration": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "calibration_provenance": {
+            "$ref": "#/components/schemas/CalibrationProvenanceSummary"
+          },
+          "drift_flag": {
+            "$ref": "#/components/schemas/DriftFlag"
+          }
+        }
+      },
+      "ConfidenceDetailClimate": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "mode",
+          "model_spread",
+          "bias_correction_residual",
+          "scenario_uncertainty",
+          "horizon_uncertainty",
+          "hierarchical_calibration"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "climate"
+            ]
+          },
+          "model_spread": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "bias_correction_residual": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "scenario_uncertainty": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "horizon_uncertainty": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "hierarchical_calibration": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "calibration_provenance": {
+            "$ref": "#/components/schemas/CalibrationProvenanceSummary"
+          },
+          "drift_flag": {
+            "$ref": "#/components/schemas/DriftFlag"
+          }
+        }
+      },
+      "SerialisedPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenantId",
+          "quoteId",
+          "status",
+          "premiumCollection",
+          "coverageWindow",
+          "coverageYear",
+          "trigger",
+          "policyTerms",
+          "boundAt",
+          "triggeredAt",
+          "settledAt",
+          "expiredAt",
+          "settlementReference"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quoteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "bound",
+              "triggered",
+              "settled",
+              "expired"
+            ]
+          },
+          "payoutAmount": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Null for mixed-currency portfolios; the breakdown lives on the underlying quote."
+          },
+          "payoutCurrency": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "EUR",
+                  "USD",
+                  "GBP",
+                  "CHF"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "premiumPaid": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "premiumCollection": {
+            "type": "string",
+            "enum": [
+              "external",
+              "stripe",
+              "invoice_due"
+            ]
+          },
+          "coverageWindow": {
+            "type": "object",
+            "required": [
+              "monthFrom",
+              "dayFrom",
+              "monthTo",
+              "dayTo"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "monthFrom": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              },
+              "dayFrom": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 31
+              },
+              "monthTo": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              },
+              "dayTo": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 31
+              }
+            }
+          },
+          "coverageYear": {
+            "type": "integer",
+            "minimum": 2000,
+            "maximum": 2100
+          },
+          "trigger": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Frozen at bind time — same shape as the quote's normalised trigger."
+          },
+          "policyTerms": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Frozen snapshot of the per-spot profile + payout terms — decouples the policy from later catalog changes."
+          },
+          "boundAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "triggeredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "settledAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "expiredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "settlementReference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SerialisedPayoutEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "policyId",
+          "spotIndex",
+          "eventStartAt",
+          "eventEndAt",
+          "hoursFired",
+          "payoutAmount",
+          "payoutCurrency",
+          "detectedAt",
+          "evaluationSource"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "policyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spotIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "eventStartAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventEndAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hoursFired": {
+            "type": "number"
+          },
+          "payoutAmount": {
+            "type": "number"
+          },
+          "payoutCurrency": {
+            "type": "string",
+            "enum": [
+              "EUR",
+              "USD",
+              "GBP",
+              "CHF"
+            ]
+          },
+          "detectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evaluationSource": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "scheduled"
+            ]
+          }
+        }
+      },
+      "UnderwritingQuoteResponse": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "policy",
+          "expectedPayouts",
+          "expectedPremium",
+          "modelConfidence",
+          "advisoryLevel",
+          "issuable",
+          "notes",
+          "underlying"
+        ],
+        "properties": {
+          "policy": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "coverageWindow",
+              "trigger",
+              "historicalYearsRange"
+            ],
+            "properties": {
+              "coverageWindow": {
+                "type": "object",
+                "required": [
+                  "monthFrom",
+                  "dayFrom",
+                  "monthTo",
+                  "dayTo"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "monthFrom": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "dayFrom": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 31
+                  },
+                  "monthTo": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "dayTo": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 31
+                  }
+                }
+              },
+              "trigger": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "Normalised trigger echoed back with defaulted consecutiveHours/cooldownHours."
+              },
+              "historicalYearsRange": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "integer"
+                  },
+                  "to": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "spot": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "resolvedProfileSlug",
+                  "point",
+                  "payout"
+                ],
+                "properties": {
+                  "resolvedProfileSlug": {
+                    "type": "string"
+                  },
+                  "point": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "spotId": {
+                    "type": "string"
+                  },
+                  "payout": {
+                    "type": "object",
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "amount": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "currency": {
+                        "type": "string",
+                        "enum": [
+                          "EUR",
+                          "USD",
+                          "GBP",
+                          "CHF"
+                        ]
+                      }
+                    }
+                  },
+                  "tier": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "enum": [
+                      1,
+                      2,
+                      3,
+                      null
+                    ],
+                    "description": "Sub-spot tier (1/2/3) applied to the tier risk multiplier; null when no sub-spot resolved."
+                  },
+                  "tierSource": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "catalog",
+                      "classifier",
+                      null
+                    ],
+                    "description": "Provenance of the tier: 'catalog' from profile YAML, 'classifier' from L11 confidence=1.0 override, null when no tier applied."
+                  }
+                }
+              },
+              "portfolio": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "resolvedProfileSlug",
+                    "point",
+                    "payout"
+                  ],
+                  "properties": {
+                    "resolvedProfileSlug": {
+                      "type": "string"
+                    },
+                    "point": {
+                      "$ref": "#/components/schemas/GeoPoint"
+                    },
+                    "spotId": {
+                      "type": "string"
+                    },
+                    "payout": {
+                      "type": "object",
+                      "required": [
+                        "amount",
+                        "currency"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "amount": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "currency": {
+                          "type": "string",
+                          "enum": [
+                            "EUR",
+                            "USD",
+                            "GBP",
+                            "CHF"
+                          ]
+                        }
+                      }
+                    },
+                    "tier": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "enum": [
+                        1,
+                        2,
+                        3,
+                        null
+                      ],
+                      "description": "Sub-spot tier (1/2/3) applied to the tier risk multiplier; null when no sub-spot resolved."
+                    },
+                    "tierSource": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "catalog",
+                        "classifier",
+                        null
+                      ],
+                      "description": "Provenance of the tier: 'catalog' from profile YAML, 'classifier' from L11 confidence=1.0 override, null when no tier applied."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "expectedPayouts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "byCurrency"
+            ],
+            "properties": {
+              "byCurrency": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "EUR": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "mean",
+                      "p10",
+                      "p50",
+                      "p90",
+                      "perYear",
+                      "varianceStability"
+                    ],
+                    "properties": {
+                      "mean": {
+                        "type": "number"
+                      },
+                      "p10": {
+                        "type": "number"
+                      },
+                      "p50": {
+                        "type": "number"
+                      },
+                      "p90": {
+                        "type": "number"
+                      },
+                      "perYear": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        }
+                      },
+                      "varianceStability": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    }
+                  },
+                  "USD": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "mean",
+                      "p10",
+                      "p50",
+                      "p90",
+                      "perYear",
+                      "varianceStability"
+                    ],
+                    "properties": {
+                      "mean": {
+                        "type": "number"
+                      },
+                      "p10": {
+                        "type": "number"
+                      },
+                      "p50": {
+                        "type": "number"
+                      },
+                      "p90": {
+                        "type": "number"
+                      },
+                      "perYear": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        }
+                      },
+                      "varianceStability": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    }
+                  },
+                  "GBP": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "mean",
+                      "p10",
+                      "p50",
+                      "p90",
+                      "perYear",
+                      "varianceStability"
+                    ],
+                    "properties": {
+                      "mean": {
+                        "type": "number"
+                      },
+                      "p10": {
+                        "type": "number"
+                      },
+                      "p50": {
+                        "type": "number"
+                      },
+                      "p90": {
+                        "type": "number"
+                      },
+                      "perYear": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        }
+                      },
+                      "varianceStability": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    }
+                  },
+                  "CHF": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "mean",
+                      "p10",
+                      "p50",
+                      "p90",
+                      "perYear",
+                      "varianceStability"
+                    ],
+                    "properties": {
+                      "mean": {
+                        "type": "number"
+                      },
+                      "p10": {
+                        "type": "number"
+                      },
+                      "p50": {
+                        "type": "number"
+                      },
+                      "p90": {
+                        "type": "number"
+                      },
+                      "perYear": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        }
+                      },
+                      "varianceStability": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "expectedPremium": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "byCurrency",
+              "loadingFactor"
+            ],
+            "properties": {
+              "byCurrency": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "EUR": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "fair",
+                      "loaded",
+                      "tierMultiplierWeightedAvg"
+                    ],
+                    "properties": {
+                      "fair": {
+                        "type": "number"
+                      },
+                      "loaded": {
+                        "type": "number"
+                      },
+                      "tierMultiplierWeightedAvg": {
+                        "type": "number",
+                        "description": "Weighted-average tier risk multiplier applied across spots in this currency (1.0 when no sub-spot)."
+                      }
+                    }
+                  },
+                  "USD": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "fair",
+                      "loaded",
+                      "tierMultiplierWeightedAvg"
+                    ],
+                    "properties": {
+                      "fair": {
+                        "type": "number"
+                      },
+                      "loaded": {
+                        "type": "number"
+                      },
+                      "tierMultiplierWeightedAvg": {
+                        "type": "number",
+                        "description": "Weighted-average tier risk multiplier applied across spots in this currency (1.0 when no sub-spot)."
+                      }
+                    }
+                  },
+                  "GBP": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "fair",
+                      "loaded",
+                      "tierMultiplierWeightedAvg"
+                    ],
+                    "properties": {
+                      "fair": {
+                        "type": "number"
+                      },
+                      "loaded": {
+                        "type": "number"
+                      },
+                      "tierMultiplierWeightedAvg": {
+                        "type": "number",
+                        "description": "Weighted-average tier risk multiplier applied across spots in this currency (1.0 when no sub-spot)."
+                      }
+                    }
+                  },
+                  "CHF": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "fair",
+                      "loaded",
+                      "tierMultiplierWeightedAvg"
+                    ],
+                    "properties": {
+                      "fair": {
+                        "type": "number"
+                      },
+                      "loaded": {
+                        "type": "number"
+                      },
+                      "tierMultiplierWeightedAvg": {
+                        "type": "number",
+                        "description": "Weighted-average tier risk multiplier applied across spots in this currency (1.0 when no sub-spot)."
+                      }
+                    }
+                  }
+                }
+              },
+              "loadingFactor": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2
+              }
+            }
+          },
+          "modelConfidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "advisoryLevel": {
+            "type": "string",
+            "enum": [
+              "high_confidence",
+              "moderate_confidence",
+              "low_confidence"
+            ]
+          },
+          "issuable": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "underlying": {
+            "description": "HistoricalScoreDistribution — object for single spot, array for portfolio.",
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            ]
+          },
+          "quoteId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Present when the policy store is wired — pass to /v1/underwriting/policy/bind to bind this quote."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO timestamp after which the quote can no longer be bound."
+          },
+          "boundPolicyId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Present on GET after the quote has been bound — the resulting policy id."
+          }
+        }
+      },
+      "WebhookEvent": {
+        "type": "string",
+        "enum": [
+          "outcome.created",
+          "drift.fired",
+          "drift.resolved",
+          "calibration.completed",
+          "billing.subscription_updated",
+          "recommendation.completed",
+          "underwriting.policy.bound",
+          "underwriting.policy.triggered",
+          "underwriting.policy.settled"
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/v1/health": {
+      "get": {
+        "summary": "Liveness probe",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Process is up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/health/ready": {
+      "get": {
+        "summary": "Readiness probe (DB + skill lookup + LLM config)",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Ready or degraded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unhealthy (critical check failed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/score": {
+      "post": {
+        "summary": "Score an activity at a location + time window",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activity",
+                  "location"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "activity": {
+                    "type": "string",
+                    "example": "kitesurfing"
+                  },
+                  "location": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "window": {
+                    "$ref": "#/components/schemas/TimeWindow"
+                  },
+                  "ensemble": {
+                    "type": "boolean",
+                    "description": "L2a probabilistic ensemble (Pro+)"
+                  },
+                  "members": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 50
+                  },
+                  "rider_skill_level": {
+                    "type": "string",
+                    "enum": [
+                      "beginner",
+                      "intermediate",
+                      "expert"
+                    ],
+                    "description": "Skill-conditioned scoring (Pro+)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Score 0-100 + verdict + confidence + eco + calibration_provenance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Daily safety cap for this endpoint + plan (not the monthly billing quota). Omitted on unlimited (Scale) plans."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Requests remaining in the current UTC-midnight daily window. Omitted on unlimited (Scale) plans."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Unix timestamp (seconds) at which the daily window resets. Omitted on unlimited (Scale) plans."
+              }
+            }
+          },
+          "402": {
+            "description": "Plan upgrade required (ensemble or rider_skill_level on Free/Starter)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No profile for activity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Daily rate limit (safety cap) exceeded for this endpoint + plan.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Seconds until the daily rate-limit window resets. Present only on this 429 response."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/score/series": {
+      "post": {
+        "summary": "Time-series scoring across a window",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activity",
+                  "location",
+                  "window"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "activity": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "window": {
+                    "$ref": "#/components/schemas/TimeWindow"
+                  },
+                  "granularity": {
+                    "type": "string",
+                    "enum": [
+                      "hourly",
+                      "3-hourly",
+                      "daily"
+                    ]
+                  },
+                  "ensemble": {
+                    "type": "boolean"
+                  },
+                  "members": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 50
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-step scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreSeriesResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No profile for activity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error / window too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/score/multi": {
+      "post": {
+        "summary": "Score multiple activities at one location",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activities",
+                  "location"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "activities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "maxItems": 10
+                  },
+                  "location": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "window": {
+                    "$ref": "#/components/schemas/TimeWindow"
+                  },
+                  "ensemble": {
+                    "type": "boolean"
+                  },
+                  "members": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 50
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-activity scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreMultiResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error / max activities exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/score/historical": {
+      "post": {
+        "summary": "Historical climatology scoring (Pro+)",
+        "description": "Percentiles + exceedance + verdict frequency over ERA5 reanalysis. Each entry carries a historical-mode ConfidenceDetail block (see components.schemas.ConfidenceDetailHistorical).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activity",
+                  "location",
+                  "yearsRange",
+                  "granularity",
+                  "selector"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "activity": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "yearsRange": {
+                    "type": "object",
+                    "required": [
+                      "from",
+                      "to"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "from": {
+                        "type": "integer",
+                        "minimum": 1940
+                      },
+                      "to": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "granularity": {
+                    "type": "string",
+                    "enum": [
+                      "month",
+                      "week",
+                      "day-of-year",
+                      "daypart"
+                    ]
+                  },
+                  "selector": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "month": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 12
+                      },
+                      "weekOfYear": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 53
+                      },
+                      "dayOfYear": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 366
+                      },
+                      "daypart": {
+                        "type": "string",
+                        "enum": [
+                          "morning",
+                          "midday",
+                          "afternoon",
+                          "evening"
+                        ]
+                      }
+                    }
+                  },
+                  "failOnMarineGap": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Percentiles + exceedance + verdict frequency (per-entry confidenceDetail: historical)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Pro+ plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/score/portfolio": {
+      "post": {
+        "summary": "Multi-spot portfolio scoring with joint variance",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "spots",
+                  "yearsRange",
+                  "granularity",
+                  "selector"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "spots": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "location",
+                        "activity"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "location": {
+                          "$ref": "#/components/schemas/GeoPoint"
+                        },
+                        "activity": {
+                          "type": "string"
+                        },
+                        "weight": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "spotId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "yearsRange": {
+                    "type": "object",
+                    "required": [
+                      "from",
+                      "to"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "from": {
+                        "type": "integer",
+                        "minimum": 1940
+                      },
+                      "to": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "granularity": {
+                    "type": "string",
+                    "enum": [
+                      "month",
+                      "week",
+                      "day-of-year",
+                      "daypart"
+                    ]
+                  },
+                  "selector": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "month": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 12
+                      },
+                      "weekOfYear": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 53
+                      },
+                      "dayOfYear": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 366
+                      },
+                      "daypart": {
+                        "type": "string",
+                        "enum": [
+                          "morning",
+                          "midday",
+                          "afternoon",
+                          "evening"
+                        ]
+                      }
+                    }
+                  },
+                  "correlation": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "model": {
+                        "type": "string",
+                        "enum": [
+                          "none",
+                          "exponential"
+                        ]
+                      },
+                      "lengthKm": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    }
+                  },
+                  "cancellationThreshold": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Portfolio score + per-spot contributions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Pro+ plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/score/explain-counterfactual": {
+      "post": {
+        "summary": "Counterfactual analysis: binding constraint + sensitivities + best window/spot",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activity",
+                  "spot",
+                  "window"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "activity": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "spot": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "window": {
+                    "$ref": "#/components/schemas/TimeWindow"
+                  },
+                  "include": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "marginal_sensitivities": {
+                        "type": "boolean"
+                      },
+                      "binding_constraint": {
+                        "type": "boolean"
+                      },
+                      "best_window_24h": {
+                        "type": "boolean"
+                      },
+                      "best_nearby_spot_km": {
+                        "type": "number",
+                        "maximum": 200
+                      },
+                      "natural_language": {
+                        "type": "boolean",
+                        "description": "LLM explanation. Available on any plan (Anthropic BYOK) — resolves the tenant's own Anthropic key set via PUT /v1/tenant/llm-key; no key configured degrades to a deterministic template (natural_language.degraded_mode=true) rather than an error."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "binding_constraint + marginal_sensitivities + best_window_24h + best_nearby_spots + optional natural_language",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No profile for activity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/decision": {
+      "post": {
+        "summary": "Personalized go/no-go decision (any plan — Anthropic BYOK)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "user_pseudonym",
+                  "activity",
+                  "spot",
+                  "window"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "user_pseudonym": {
+                    "type": "string",
+                    "minLength": 32,
+                    "pattern": "^[0-9a-fA-F]+$",
+                    "description": "SHA256(user_id + secret)[:32], hex ≥32 chars. NEVER PII."
+                  },
+                  "activity": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "spot": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "window": {
+                    "$ref": "#/components/schemas/TimeWindow"
+                  },
+                  "user_profile": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "experience": {
+                        "type": "string",
+                        "enum": [
+                          "beginner",
+                          "intermediate",
+                          "advanced",
+                          "expert"
+                        ]
+                      },
+                      "weight_kg": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "maximum": 300
+                      },
+                      "risk_tolerance": {
+                        "type": "string",
+                        "enum": [
+                          "conservative",
+                          "moderate",
+                          "aggressive"
+                        ]
+                      },
+                      "owned_gear": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "maxItems": 20
+                      }
+                    }
+                  },
+                  "training_consent": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "score + verdict + decision block + degraded_mode + advisory_notice. Available on any plan; the LLM reasoning narrative requires the tenant's own Anthropic key (PUT /v1/tenant/llm-key) — without one, degraded_mode=true and a deterministic template is returned instead of an error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No profile for activity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/decision/user-data/{pseudonym}": {
+      "delete": {
+        "summary": "GDPR Art. 17 right-to-erasure for a pseudonym",
+        "parameters": [
+          {
+            "name": "pseudonym",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted. Headers: X-Anonymized-Rows, X-Anonymized-Decision-Runs, X-Receipt"
+          }
+        }
+      }
+    },
+    "/v1/intelligence/explain": {
+      "post": {
+        "summary": "LLM narrative explanation of a score (L2c, any plan — Anthropic BYOK)",
+        "description": "Requires the tenant to have its own Anthropic key set via PUT /v1/tenant/llm-key — no longer plan-gated. No key configured → 503 INTELLIGENCE_UNAVAILABLE.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "location"
+                ],
+                "additionalProperties": false,
+                "description": "Provide exactly one of scoreResult or session_id.",
+                "properties": {
+                  "location": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "scoreResult": {
+                    "$ref": "#/components/schemas/ScoreResponse"
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "it"
+                    ]
+                  },
+                  "model": {
+                    "type": "string",
+                    "enum": [
+                      "claude-haiku-4-5-20251001",
+                      "claude-sonnet-4-6"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Natural-language explanation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No Anthropic key configured for this tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/intelligence/briefing": {
+      "post": {
+        "summary": "LLM multi-slot briefing (L2c, any plan — Anthropic BYOK)",
+        "description": "Requires the tenant to have its own Anthropic key set via PUT /v1/tenant/llm-key — no longer plan-gated. No key configured → 503 INTELLIGENCE_UNAVAILABLE.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activity",
+                  "slots"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "activity": {
+                    "type": "string"
+                  },
+                  "slots": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "it"
+                    ]
+                  },
+                  "model": {
+                    "type": "string",
+                    "enum": [
+                      "claude-haiku-4-5-20251001",
+                      "claude-sonnet-4-6"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Briefing text",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No Anthropic key configured for this tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tenant/llm-key": {
+      "put": {
+        "summary": "Set/rotate the tenant's Anthropic API key (Anthropic BYOK)",
+        "description": "Validates the key with one cheap Anthropic API call before storing. Encrypts at rest (AES-256-GCM); the plaintext key is NEVER echoed back by this or any other endpoint. Available to any authenticated plan. Rate-limited (this call itself makes one real Anthropic API request).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "apiKey"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "apiKey": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 300,
+                    "description": "The tenant's own Anthropic API key (sk-ant-...)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Key validated, encrypted, and stored."
+          },
+          "422": {
+            "description": "Validation error, or Anthropic rejected the key (LLM_KEY_INVALID)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BYOK storage or BYOK_MASTER_KEY not configured on this deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Get the tenant's Anthropic key status (Anthropic BYOK)",
+        "description": "Never returns the key — only whether one is set, its last 4 characters, and timestamps.",
+        "responses": {
+          "200": {
+            "description": "Masked key status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "set"
+                  ],
+                  "properties": {
+                    "set": {
+                      "type": "boolean"
+                    },
+                    "last4": {
+                      "type": "string"
+                    },
+                    "setAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "lastValidatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BYOK storage not configured on this deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove the tenant's Anthropic key (Anthropic BYOK)",
+        "description": "Hard-deletes the stored ciphertext. LLM routes revert to the no-key degraded/503 path for this tenant.",
+        "responses": {
+          "204": {
+            "description": "Key removed."
+          },
+          "503": {
+            "description": "BYOK storage not configured on this deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projections": {
+      "post": {
+        "summary": "Climate-decadal activity viability projection (Scale)",
+        "description": "Per-decade projection distributions. Each entry carries a climate-mode ConfidenceDetail block (see components.schemas.ConfidenceDetailClimate).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "spot",
+                  "scenarios"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "spot": {
+                    "type": "object",
+                    "required": [
+                      "location",
+                      "activity"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "location": {
+                        "$ref": "#/components/schemas/GeoPoint"
+                      },
+                      "activity": {
+                        "type": "string"
+                      },
+                      "spotId": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "scenarios": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "SSP1-2.6",
+                        "SSP2-4.5",
+                        "SSP3-7.0",
+                        "SSP5-8.5"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "horizonDecades": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "baselineDecade": {
+                    "type": "string",
+                    "enum": [
+                      "2020s",
+                      "2030s"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-decade projection distributions (per-entry confidenceDetail: climate)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Scale plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/underwriting/quote": {
+      "post": {
+        "summary": "Parametric underwriting quote (Scale)",
+        "description": "Multi-currency `expectedPremium.byCurrency` — a mixed-currency portfolio returns per-currency stats with no FX conversion. `policy.spot.tier` / `policy.portfolio[i].tier` echo the resolved sub-spot tier (1/2/3) or null when no sub-spot covers the point; `tierSource` marks whether it came from the catalog YAML or L11's data-driven classifier.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "coverageWindow",
+                  "trigger"
+                ],
+                "additionalProperties": false,
+                "description": "Provide exactly one of spot or portfolio.",
+                "properties": {
+                  "spot": {
+                    "type": "object",
+                    "required": [
+                      "point",
+                      "activity",
+                      "payout"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "point": {
+                        "$ref": "#/components/schemas/GeoPoint"
+                      },
+                      "activity": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "spotId": {
+                        "type": "string"
+                      },
+                      "payout": {
+                        "type": "object",
+                        "required": [
+                          "amount",
+                          "currency"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "amount": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "currency": {
+                            "type": "string",
+                            "enum": [
+                              "EUR",
+                              "USD",
+                              "GBP",
+                              "CHF"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "portfolio": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 50,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "point",
+                        "activity",
+                        "payout"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "point": {
+                          "$ref": "#/components/schemas/GeoPoint"
+                        },
+                        "activity": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotId": {
+                          "type": "string"
+                        },
+                        "payout": {
+                          "type": "object",
+                          "required": [
+                            "amount",
+                            "currency"
+                          ],
+                          "additionalProperties": false,
+                          "properties": {
+                            "amount": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            },
+                            "currency": {
+                              "type": "string",
+                              "enum": [
+                                "EUR",
+                                "USD",
+                                "GBP",
+                                "CHF"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "coverageWindow": {
+                    "type": "object",
+                    "required": [
+                      "monthFrom",
+                      "dayFrom",
+                      "monthTo",
+                      "dayTo"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "monthFrom": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 12
+                      },
+                      "dayFrom": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 31
+                      },
+                      "monthTo": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 12
+                      },
+                      "dayTo": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 31
+                      }
+                    }
+                  },
+                  "trigger": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "kind",
+                          "scoreBelow"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "scoreBelow"
+                            ]
+                          },
+                          "scoreBelow": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100
+                          },
+                          "consecutiveHours": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 72
+                          },
+                          "cooldownHours": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 168
+                          },
+                          "maxPayoutsPerYear": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "kind",
+                          "verdict"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "verdictAtOrBelow"
+                            ]
+                          },
+                          "verdict": {
+                            "$ref": "#/components/schemas/Verdict"
+                          },
+                          "consecutiveHours": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 72
+                          },
+                          "cooldownHours": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 168
+                          },
+                          "maxPayoutsPerYear": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "historicalYearsRange": {
+                    "type": "object",
+                    "required": [
+                      "from",
+                      "to"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "from": {
+                        "type": "integer",
+                        "minimum": 1940
+                      },
+                      "to": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "loadingFactor": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "calibrationConfidenceMin": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "forceIssue": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Premium + policy echo (with per-spot tier + tierSource) + bindable quote id when policy store is wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnderwritingQuoteResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Scale plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No profile for activity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error / low confidence / invalid trigger",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "HistoricalProvider not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/underwriting/quote/{id}": {
+      "get": {
+        "summary": "Fetch a bindable quote by id (Scale)",
+        "description": "Tenant-scoped read of a quote created via POST /v1/underwriting/quote. Returns the same body shape as the create response (with the optional `boundPolicyId` populated once the quote has been bound).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quote record (may include boundPolicyId when already bound)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnderwritingQuoteResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Scale plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Quote not found for this tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Quote persistence not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/underwriting/policy/bind": {
+      "post": {
+        "summary": "Bind a parametric policy (Scale)",
+        "description": "Convert a bindable quote (≤24h old) into a bound policy for a specific coverage year. Returns the serialised policy + the quoteId + optional `driftAdvisories` — a soft warning surfaced when the resolved cell has an open watch-level L9 drift event. A warning/critical drift event at bind time REFUSES the bind with 422 DRIFT_ACTIVE (see the 422 response). Fires the `underwriting.policy.bound` webhook on success. Supports the optional `Idempotency-Key` header (see parameter description) so a client-side retry after a network timeout can't double-bind.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "description": "Optional client-generated key (unique per logical request, scoped to your tenant). A retry with the SAME key and the SAME request body replays the original response verbatim without re-executing the request. A retry with the same key and a DIFFERENT body, or one that arrives while the original is still in flight, returns 409 IDEMPOTENCY_KEY_CONFLICT. Claims expire after 24h."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "quoteId",
+                  "coverageYear",
+                  "premiumCollection"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "quoteId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "coverageYear": {
+                    "type": "integer",
+                    "minimum": 2000,
+                    "maximum": 2100
+                  },
+                  "premiumCollection": {
+                    "type": "string",
+                    "enum": [
+                      "external",
+                      "stripe",
+                      "invoice_due"
+                    ]
+                  },
+                  "premiumPaid": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Policy bound",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "policy",
+                    "quoteId"
+                  ],
+                  "properties": {
+                    "policy": {
+                      "$ref": "#/components/schemas/SerialisedPolicy"
+                    },
+                    "quoteId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "driftAdvisories": {
+                      "type": "array",
+                      "description": "Soft warnings for cells with an open watch-level L9 drift event. Present only when non-empty.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "spotIndex",
+                          "activity",
+                          "subSpotSlug",
+                          "severity",
+                          "since"
+                        ],
+                        "properties": {
+                          "spotIndex": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "activity": {
+                            "type": "string"
+                          },
+                          "subSpotSlug": {
+                            "type": "string"
+                          },
+                          "severity": {
+                            "type": "string",
+                            "enum": [
+                              "watch"
+                            ]
+                          },
+                          "since": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Scale plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Quote not found for this tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Quote already bound to another policy (QUOTE_ALREADY_BOUND), or IDEMPOTENCY_KEY_CONFLICT — a request with this Idempotency-Key is still in flight, or was already used with a different request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error / quote expired / quote not issuable / catalog drift / DRIFT_ACTIVE (open warning or critical drift event on resolved cell — `detail.openDriftEvents` lists each blocking cell)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Policy persistence not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/underwriting/policy": {
+      "get": {
+        "summary": "List bound policies for the caller's tenant (Scale)",
+        "description": "Paginated list of every bound policy owned by the calling tenant. Ordered by boundAt DESC.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "bound",
+                "triggered",
+                "settled",
+                "expired"
+              ]
+            }
+          },
+          {
+            "name": "coverageYear",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bound policies for this tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "policies"
+                  ],
+                  "properties": {
+                    "policies": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SerialisedPolicy"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Scale plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Policy persistence not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/underwriting/policy/{policyId}": {
+      "get": {
+        "summary": "Fetch a single policy by id (Scale)",
+        "description": "Read-only lookup. Cross-tenant policies return 404.",
+        "parameters": [
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Policy record + payout events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "policy",
+                    "events"
+                  ],
+                  "properties": {
+                    "policy": {
+                      "$ref": "#/components/schemas/SerialisedPolicy"
+                    },
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SerialisedPayoutEvent"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Scale plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Policy not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Policy persistence not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/underwriting/policy/{policyId}/evaluate": {
+      "post": {
+        "summary": "Re-evaluate a bound policy against historical replay (Scale)",
+        "description": "Runs the trigger walk against the historical archive for the policy's coverage year and inserts any newly detected payout events. No request body. Fires the `underwriting.policy.triggered` webhook the first time new events are inserted.",
+        "parameters": [
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Policy + payout events + counts of newly inserted / skipped",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "policy",
+                    "events",
+                    "inserted",
+                    "skipped"
+                  ],
+                  "properties": {
+                    "policy": {
+                      "$ref": "#/components/schemas/SerialisedPolicy"
+                    },
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SerialisedPayoutEvent"
+                      }
+                    },
+                    "inserted": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "skipped": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Scale plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Policy not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Policy in a terminal state (settled / expired)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Policy persistence or HistoricalProvider not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/underwriting/policy/{policyId}/settle": {
+      "post": {
+        "summary": "Settle a bound policy (platform-ops only)",
+        "description": "PLATFORM-OPS ONLY — requires the `platform_admin` scope (cross-tenant Goable/underwriter operation, not a policyholder self-service action). Records the settlement wire reference + freezes the payout, and fires the `underwriting.policy.settled` webhook. Normally invoked by the daily settlement cron; use manually only for out-of-band settlement.",
+        "parameters": [
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "settlementReference"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "settlementReference": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "settledAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Settled policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "policy"
+                  ],
+                  "properties": {
+                    "policy": {
+                      "$ref": "#/components/schemas/SerialisedPolicy"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Scale plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing scope: platform_admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Policy not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error or policy not in a settleable state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Policy persistence not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/score/{sessionId}/outcome": {
+      "post": {
+        "summary": "Report observed outcome for a scored session",
+        "description": "Close the calibration loop. Submit the actual outcome (ran/cancelled/no_show/rescheduled/note) of a /v1/score session. The calibration pipeline + forecast verification + drift monitor consume these. Requires the `outcomes:write` scope (live keys carry it by default; test keys don't). Supports the optional `Idempotency-Key` header (see parameter description) so a client-side retry can't record the same outcome twice.",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Session UUID returned in the /v1/score response metadata."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "description": "Optional client-generated key (unique per logical request, scoped to your tenant). A retry with the SAME key and the SAME request body replays the original response verbatim without re-executing the request. A retry with the same key and a DIFFERENT body, or one that arrives while the original is still in flight, returns 409 IDEMPOTENCY_KEY_CONFLICT. Claims expire after 24h."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "outcome_type"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "outcome_type": {
+                    "type": "string",
+                    "enum": [
+                      "ran",
+                      "cancelled",
+                      "rescheduled",
+                      "no_show",
+                      "note"
+                    ]
+                  },
+                  "detail": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted (queued for the next calibration batch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing scope: outcomes:write",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "IDEMPOTENCY_KEY_CONFLICT — a request with this Idempotency-Key is still in flight, or was already used with a different request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/score/difficulty": {
+      "post": {
+        "summary": "L15 intrinsic-difficulty atlas lookup (Pro+)",
+        "description": "Returns the per-dimension intrinsic difficulty curve δ(x) for the sub-spot the (activity, location) resolves to. Pure atlas read — no scoring, no weather fetch. 404 NO_DIFFICULTY_ATLAS when the sub-spot resolves but no atlas row exists yet (dormant cell — communicated honestly rather than synthesised).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activity",
+                  "location"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "activity": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "location": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-dimension intrinsic difficulty curves for the resolved sub-spot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "resolved",
+                    "dimensions"
+                  ],
+                  "properties": {
+                    "resolved": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "level",
+                        "slug"
+                      ],
+                      "properties": {
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "sub-spot",
+                            "cluster",
+                            "region",
+                            "base"
+                          ]
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "sub_spot_slug": {
+                          "type": "string"
+                        },
+                        "distance_to_sub_spot_m": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    "dimensions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "dimension",
+                          "grid",
+                          "difficulty",
+                          "discrimination_a",
+                          "cohort_hash",
+                          "computed_at"
+                        ],
+                        "properties": {
+                          "dimension": {
+                            "type": "string"
+                          },
+                          "grid": {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            }
+                          },
+                          "difficulty": {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            }
+                          },
+                          "discrimination_a": {
+                            "type": "number"
+                          },
+                          "cohort_hash": {
+                            "type": "string"
+                          },
+                          "computed_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Pro+ plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No profile for activity, or no atlas row for the resolved sub-spot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Difficulty atlas reader not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/recommend-spot": {
+      "post": {
+        "summary": "Spot recommender — inverse query (L10)",
+        "description": "Given (activity, region center, radius, window) → top-K ranked sub-spots in the catalog. Composition of L1-L3 scoring + L4.6 confidence + L6 personal blend (Pro+, when pseudonym supplied). Plan caps: radius 25/50/200/1000 km, topK 5/10/20/50 across Free / Starter / Pro / Scale. Personalization Pro+ only. Hard-gated candidates (lightning ≥ 0.85, AQI hazardous) are dropped from results; `allGated=true` distinguishes 'all in-radius spots were unsafe' from 'no spots in radius at all'.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activity",
+                  "regionCenter",
+                  "radiusKm",
+                  "topK"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "activity": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "regionCenter": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "radiusKm": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "topK": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "window": {
+                    "$ref": "#/components/schemas/TimeWindow"
+                  },
+                  "userPseudonym": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "description": "Optional booking-platform-side pseudonym. When present, Pro+ tenants get personalization via the L6 cold-start blend (cap 0.5 weight)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ranked top-K sub-spots + observability metadata. The optional `coverage` field appears only on empty results from a catalog gap (not from hard-gating).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "spotSlug": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "location": {
+                            "$ref": "#/components/schemas/GeoPoint"
+                          },
+                          "distanceKm": {
+                            "type": "number"
+                          },
+                          "score": {
+                            "type": "number"
+                          },
+                          "effectiveScore": {
+                            "type": "number"
+                          },
+                          "verdict": {
+                            "type": "string"
+                          },
+                          "personalScore": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "personalWeight": {
+                            "type": "number"
+                          },
+                          "rank": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "allGated": {
+                      "type": "boolean"
+                    },
+                    "totalCandidates": {
+                      "type": "integer"
+                    },
+                    "rankedCandidates": {
+                      "type": "integer"
+                    },
+                    "effectiveRadiusKm": {
+                      "type": "number"
+                    },
+                    "effectiveTopK": {
+                      "type": "integer"
+                    },
+                    "personalizationApplied": {
+                      "type": "boolean"
+                    },
+                    "latencyMs": {
+                      "type": "integer"
+                    },
+                    "coverage": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "no_subspots_in_radius"
+                              ]
+                            },
+                            "nearestSubSpot": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "slug": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "distanceKm": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "slug",
+                                "name",
+                                "distanceKm"
+                              ]
+                            },
+                            "suggestedAction": {
+                              "type": "string",
+                              "enum": [
+                                "expand_radius"
+                              ]
+                            },
+                            "suggestedRadiusKm": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "nearestSubSpot",
+                            "suggestedAction",
+                            "suggestedRadiusKm"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "no_subspots_for_activity"
+                              ]
+                            },
+                            "suggestedAction": {
+                              "type": "string",
+                              "enum": [
+                                "request_coverage"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "suggestedAction"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Daily safety cap for this endpoint + plan (not the monthly billing quota). Omitted on unlimited (Scale) plans."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Requests remaining in the current UTC-midnight daily window. Omitted on unlimited (Scale) plans."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Unix timestamp (seconds) at which the daily window resets. Omitted on unlimited (Scale) plans."
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Plan limit exceeded (radius or topK above plan cap)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error or unknown activity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Daily rate limit (safety cap) exceeded for this endpoint + plan.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Seconds until the daily rate-limit window resets. Present only on this 429 response."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Spatial resolver not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/intelligence/edge-case": {
+      "post": {
+        "summary": "LLM analysis of a borderline / surprising score (L2c, any plan — Anthropic BYOK)",
+        "description": "Asks the LLM to inspect a score that's near a verdict boundary or contradicts operator intuition. Returns a narrative + a structured `limiting_class` taxonomy entry. Requires the tenant's own Anthropic key (PUT /v1/tenant/llm-key) — no longer plan-gated.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "location"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "location": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "scoreResult": {
+                    "$ref": "#/components/schemas/ScoreResponse"
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "it"
+                    ]
+                  },
+                  "model": {
+                    "type": "string",
+                    "enum": [
+                      "claude-haiku-4-5-20251001",
+                      "claude-sonnet-4-6"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Narrative + limiting_class",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No Anthropic key configured for this tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projections/portfolio": {
+      "post": {
+        "summary": "Climate projections across a portfolio of spots (Scale)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "spots",
+                  "scenarios"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "spots": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "location",
+                        "activity"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "location": {
+                          "$ref": "#/components/schemas/GeoPoint"
+                        },
+                        "activity": {
+                          "type": "string"
+                        },
+                        "spotId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "scenarios": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "SSP1-2.6",
+                        "SSP2-4.5",
+                        "SSP3-7.0",
+                        "SSP5-8.5"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "horizonDecades": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "baselineDecade": {
+                    "type": "string",
+                    "enum": [
+                      "2020s",
+                      "2030s"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-spot per-decade projection distributions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Scale plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projections/adaptation-report": {
+      "post": {
+        "summary": "Climate adaptation report for an operator (Scale)",
+        "description": "Combines projections across a portfolio + qualitative summary of which dimensions are likely to bind (wind shifts, water-temp shifts, etc.). Designed as input for a tourism-board adaptation plan.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "spots",
+                  "scenarios"
+                ],
+                "additionalProperties": true,
+                "properties": {
+                  "spots": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "location",
+                        "activity"
+                      ],
+                      "additionalProperties": true,
+                      "properties": {
+                        "location": {
+                          "$ref": "#/components/schemas/GeoPoint"
+                        },
+                        "activity": {
+                          "type": "string"
+                        },
+                        "spotId": {
+                          "type": "string"
+                        },
+                        "subSpotSlug": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "scenarios": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "SSP1-2.6",
+                        "SSP2-4.5",
+                        "SSP3-7.0",
+                        "SSP5-8.5"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "horizonDecades": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Adaptation report + binding-dimension summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Scale plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/observations": {
+      "post": {
+        "summary": "Submit station observations for data assimilation (Pro+)",
+        "description": "Push tenant-station observations (wind / wave / temperature / etc.) into the 0-6h assimilation window. The optimal-interpolation blending pulls them into forecast samples for nearby spots, improving short-horizon skill.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "stationId",
+                  "observations"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "stationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "observations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 1000,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "observedAt",
+                        "variable",
+                        "value"
+                      ],
+                      "properties": {
+                        "observedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "variable": {
+                          "type": "string",
+                          "enum": [
+                            "wind_speed_kn",
+                            "wind_dir_deg",
+                            "wave_height_m",
+                            "temp_c",
+                            "sea_surface_temp_c",
+                            "pressure_hpa",
+                            "precip_mm"
+                          ]
+                        },
+                        "value": {
+                          "type": "number"
+                        },
+                        "qualityFlag": {
+                          "type": "string",
+                          "enum": [
+                            "verified",
+                            "unflagged",
+                            "flagged_low_quality"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Requires Pro+ plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Station not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Station inactive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error / observation in future / variable mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Observation store not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/observations/stations": {
+      "get": {
+        "summary": "List tenant stations",
+        "responses": {
+          "200": {
+            "description": "Array of stations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Station registry not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Register a tenant observation station",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "point",
+                  "variables"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "point": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "altitudeM": {
+                    "type": "integer"
+                  },
+                  "variables": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "wind_speed_kn",
+                        "wind_dir_deg",
+                        "wave_height_m",
+                        "temp_c",
+                        "sea_surface_temp_c",
+                        "pressure_hpa",
+                        "precip_mm"
+                      ]
+                    }
+                  },
+                  "stationClass": {
+                    "type": "string",
+                    "enum": [
+                      "verified",
+                      "unflagged",
+                      "flagged_low_quality"
+                    ]
+                  },
+                  "updateCadenceMinutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1440
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Station created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Station registry not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/observations/stations/{stationId}": {
+      "patch": {
+        "summary": "Update a station",
+        "parameters": [
+          {
+            "name": "stationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "point": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "altitudeM": {
+                    "type": "integer"
+                  },
+                  "variables": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "wind_speed_kn",
+                        "wind_dir_deg",
+                        "wave_height_m",
+                        "temp_c",
+                        "sea_surface_temp_c",
+                        "pressure_hpa",
+                        "precip_mm"
+                      ]
+                    }
+                  },
+                  "stationClass": {
+                    "type": "string",
+                    "enum": [
+                      "verified",
+                      "unflagged",
+                      "flagged_low_quality"
+                    ]
+                  },
+                  "updateCadenceMinutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1440
+                  },
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated station",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Station not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Station registry not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/observations/stations/{stationId}/recent": {
+      "get": {
+        "summary": "Recent observations for a tenant station",
+        "description": "Returns up to `limit` most-recent observations submitted for the station (tenant-scoped). Useful for the tenant's own dashboard / debugging feed. Requires the `score:read` scope.",
+        "parameters": [
+          {
+            "name": "stationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Most-recent observations for this station (descending by observedAt)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "observations"
+                  ],
+                  "properties": {
+                    "observations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "stationId",
+                          "observedAt",
+                          "variable",
+                          "value",
+                          "ingestedAt"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "stationId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "observedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "variable": {
+                            "type": "string",
+                            "enum": [
+                              "wind_speed_kn",
+                              "wind_dir_deg",
+                              "wave_height_m",
+                              "temp_c",
+                              "sea_surface_temp_c",
+                              "pressure_hpa",
+                              "precip_mm"
+                            ]
+                          },
+                          "value": {
+                            "type": "number"
+                          },
+                          "qualityFlag": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "verified",
+                              "unflagged",
+                              "flagged_low_quality",
+                              null
+                            ]
+                          },
+                          "ingestedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Station not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Observation store not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/signup": {
+      "post": {
+        "summary": "Self-service tenant signup (no auth)",
+        "security": [],
+        "description": "Public endpoint, IP-rate-limited (3 attempts / 24h / IP). Creates a tenant + sends a magic-link to the contact email. Always returns 202 on success — never reveals whether an email is already registered. Optional Cloudflare Turnstile token strengthens the gate.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "displayName",
+                  "contactEmail",
+                  "acceptTerms"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "contactEmail": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "acceptTerms": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ],
+                    "description": "Must be true — records ToS / Privacy / DPA acceptance."
+                  },
+                  "turnstileToken": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted — magic-link sent if signup valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "IP rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/sustainability-index": {
+      "get": {
+        "summary": "Public Goable Sustainability Index (no auth, JSON-LD)",
+        "security": [],
+        "description": "Public JSON-LD artefact of the Goable Sustainability Index (CC BY 4.0). Session-weighted 0-100 index across zones plus per-zone breakdowns. Governed by k-anonymity (default k≥10) + a 90-day publication lag in the underlying reader — no additional privacy work required for the public surface. Content-Type: application/ld+json. Edge-cached for 5 minutes.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Inclusive start of the reporting period."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Exclusive end of the reporting period."
+          },
+          {
+            "name": "zoneKm",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 500
+            },
+            "description": "Zone grid cell edge length in km (default: reader-configured)."
+          },
+          {
+            "name": "k",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 1000,
+              "default": 10
+            },
+            "description": "k-anonymity threshold: zones with fewer than k sessions are suppressed."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sustainability Index document (JSON-LD)",
+            "content": {
+              "application/ld+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [
+                    "@context",
+                    "@type",
+                    "generatedAt",
+                    "period",
+                    "methodology",
+                    "overall",
+                    "zones",
+                    "license",
+                    "attribution"
+                  ],
+                  "properties": {
+                    "@context": {
+                      "type": "string",
+                      "example": "https://schema.org"
+                    },
+                    "@type": {
+                      "type": "string",
+                      "enum": [
+                        "GoableSustainabilityIndex"
+                      ]
+                    },
+                    "generatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "period": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "from",
+                        "to"
+                      ],
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "to": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "methodology": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "indexFormula",
+                        "weights",
+                        "suppression",
+                        "notes"
+                      ],
+                      "properties": {
+                        "indexFormula": {
+                          "type": "string"
+                        },
+                        "weights": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "carbonNeutralShare",
+                            "electrificationShare"
+                          ],
+                          "properties": {
+                            "carbonNeutralShare": {
+                              "type": "number"
+                            },
+                            "electrificationShare": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        "suppression": {
+                          "type": "string"
+                        },
+                        "notes": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "overall": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "index",
+                        "totalSessions",
+                        "carbonNeutralSessions",
+                        "carbonPositiveSessions",
+                        "carbonNeutralShare",
+                        "zonesReleased",
+                        "zonesSuppressed"
+                      ],
+                      "properties": {
+                        "index": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "totalSessions": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "carbonNeutralSessions": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "carbonPositiveSessions": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "carbonNeutralShare": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "zonesReleased": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "zonesSuppressed": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      }
+                    },
+                    "zones": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "zoneKey",
+                          "label",
+                          "centroid",
+                          "totalSessions",
+                          "carbonNeutralShare",
+                          "electrificationShare",
+                          "seasonalConcentration",
+                          "zoneIndex"
+                        ],
+                        "properties": {
+                          "zoneKey": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "centroid": {
+                            "oneOf": [
+                              {
+                                "$ref": "#/components/schemas/GeoPoint"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "totalSessions": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "carbonNeutralShare": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "electrificationShare": {
+                            "type": [
+                              "number",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "seasonalConcentration": {
+                            "type": [
+                              "number",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "zoneIndex": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100
+                          }
+                        }
+                      }
+                    },
+                    "license": {
+                      "type": "string",
+                      "enum": [
+                        "CC BY 4.0"
+                      ]
+                    },
+                    "attribution": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Sustainability index reader not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/research/verification/export": {
+      "get": {
+        "summary": "Public Stream F forecast verification export (no auth, JSONL)",
+        "security": [],
+        "description": "Streamed newline-delimited JSON (`application/x-ndjson`) — one anonymised (activity × 1km² grid × weekly bucket) skill cell per line, followed by a trailing metadata line. CC BY 4.0. Governance: k≥10 contributor floor + 90-day publication lag + `research_eligible=true` filter enforced in the SQL reader.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Streamed JSONL — one cell per line + trailing meta line",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Verification reader not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/research/difficulty-atlas/export.jsonl": {
+      "get": {
+        "summary": "Public L15 Difficulty Atlas export (no auth, JSONL)",
+        "security": [],
+        "description": "Streamed newline-delimited JSON (`application/x-ndjson`) — one anonymised (activity × sub-spot × dimension) difficulty row per line, followed by a trailing metadata line. CC BY 4.0. First openly-available intrinsic-difficulty measurement for outdoor activities. Governance mirrors Stream F: k≥10 contributors + 90-day publication lag.",
+        "responses": {
+          "200": {
+            "description": "Streamed JSONL — one atlas row per line + trailing meta line",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Difficulty atlas reader not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/catalog-stats": {
+      "get": {
+        "summary": "Open catalogue coverage stats (no auth)",
+        "security": [],
+        "description": "Live coverage numbers for the open activity catalogue (CC BY 4.0). Returns totals across activities · sub-spots · clusters · regions · countries plus a per-activity breakdown with country codes + status (`seeded` ≥10 sub-spots / `partial` 1-9 / `empty` 0). Edge-cached for 5 minutes — new sub-spots ship via PR + release cycle, not at runtime. Same JSON the /catalog landing renders; expose this surface for marketing / partner sites that want to embed live numbers without scraping HTML.",
+        "responses": {
+          "200": {
+            "description": "Live coverage stats from the @goable-io/profiles-catalog package",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "computedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO timestamp the bundled JSON was computed at"
+                    },
+                    "catalogVersion": {
+                      "type": "string",
+                      "description": "Catalog package version (mirrors package.json)"
+                    },
+                    "totals": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "activities": {
+                          "type": "integer"
+                        },
+                        "subSpots": {
+                          "type": "integer"
+                        },
+                        "clusters": {
+                          "type": "integer"
+                        },
+                        "regions": {
+                          "type": "integer"
+                        },
+                        "countries": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "activities",
+                        "subSpots",
+                        "clusters",
+                        "regions",
+                        "countries"
+                      ]
+                    },
+                    "byActivity": {
+                      "type": "array",
+                      "description": "One entry per base profile, sorted DESC by subSpotCount.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "family": {
+                            "type": "string",
+                            "enum": [
+                              "water",
+                              "snow",
+                              "air",
+                              "land"
+                            ]
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "subSpotCount": {
+                            "type": "integer"
+                          },
+                          "clusterCount": {
+                            "type": "integer"
+                          },
+                          "countryCount": {
+                            "type": "integer"
+                          },
+                          "countries": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "description": "ISO 3166-1 alpha-2 code"
+                            }
+                          },
+                          "clusters": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "slug": {
+                                  "type": "string"
+                                },
+                                "displayName": {
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "type": "string"
+                                },
+                                "subSpotCount": {
+                                  "type": "integer"
+                                }
+                              }
+                            }
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "seeded",
+                              "partial",
+                              "empty"
+                            ],
+                            "description": "seeded ≥10 sub-spots · partial 1-9 · empty 0"
+                          },
+                          "lastUpdatedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time",
+                            "description": "Newest commit touching the activity dir (null when no sub-spots yet)"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "computedAt",
+                    "catalogVersion",
+                    "totals",
+                    "byActivity"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/outcomes": {
+      "post": {
+        "summary": "Report a standalone activity outcome",
+        "description": "Submit an observed outcome for an activity session not tied to a specific /v1/score call — the operator-reported behavioural signal behind the calibration + research datasets. For an outcome linked to a specific scored session, use POST /v1/score/{sessionId}/outcome instead. Requires the `outcomes:write` scope (live keys carry it by default; test keys don't).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "occurred_at",
+                  "activity_slug",
+                  "outcome_type"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "occurred_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "activity_slug": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "outcome_type": {
+                    "type": "string",
+                    "enum": [
+                      "ran",
+                      "cancelled",
+                      "rescheduled",
+                      "no_show",
+                      "note"
+                    ]
+                  },
+                  "spot_id": {
+                    "type": "string",
+                    "description": "Optional catalogue sub-spot slug."
+                  },
+                  "audit_log_id": {
+                    "type": "string",
+                    "description": "Optional link back to a scoring_audit_log row."
+                  },
+                  "detail": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "equipment_type": {
+                    "type": "string",
+                    "enum": [
+                      "electric",
+                      "combustion",
+                      "manual"
+                    ],
+                    "description": "Stream G equipment-transition signal."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted (queued for the next calibration batch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing scope: outcomes:write",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audit/export": {
+      "get": {
+        "summary": "Export the caller's own score + outcome audit history",
+        "description": "Tenant-scoped export of your own scoring_audit_log activity (one row per /v1/score call, with any linked outcome inline), date-range filtered. The tenant is always the calling API key's tenant — there is no way to request another tenant's data. Outcomes reported via the free-standing POST /v1/outcomes (i.e. not linked to a specific score via audit_log_id) are not included. Offset-paginated; `X-Total-Count` on every response carries the total row count for the window.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ],
+              "default": "json"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5000
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV (format=csv) or JSON (format=json, default) export of the window.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "rows",
+                    "meta"
+                  ],
+                  "properties": {
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "total",
+                        "limit",
+                        "offset",
+                        "window"
+                      ],
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        },
+                        "window": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "string"
+                            },
+                            "to": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error, `to` before `from`, or WINDOW_TOO_LARGE (range exceeds 366 days)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Audit export is not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/legal/{kind}/current": {
+      "get": {
+        "summary": "Fetch the current published legal document (no auth)",
+        "security": [],
+        "description": "Public read of the currently-published version of a legal document (Terms of Service, Privacy Policy, DPA, SLA, Acceptable Use, Cookie Policy). Returns the full body + content hash + published timestamp. Used by the signup flow + marketing site to render always-current legal copy without hardcoding it.",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "terms_of_service",
+                "privacy_policy",
+                "data_processing_agreement",
+                "sla",
+                "acceptable_use",
+                "cookie_policy"
+              ]
+            },
+            "description": "Legal document kind."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current published document of the requested kind",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "document": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "body": {
+                          "type": "string"
+                        },
+                        "contentHash": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "version",
+                        "title",
+                        "body",
+                        "contentHash",
+                        "status",
+                        "createdAt",
+                        "publishedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "document"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown document kind, or no published document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Legal document store not wired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

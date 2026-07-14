@@ -1,0 +1,89 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "goable-sdk"
+version = "0.1.0"
+description = "Python client for the Goable API — suitability scoring for outdoor activities."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Fabio Carucci", email = "contact@fabio-carucci.com" }]
+requires-python = ">=3.10"
+keywords = ["goable", "weather", "scoring", "outdoor", "forecast", "kitesurf", "api-client", "sdk"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+dependencies = [
+  "httpx>=0.27",
+  "pydantic>=2.0",
+  # pydantic's EmailStr (used by the generated V1PublicSignupPostRequest
+  # model, `contactEmail`) requires this at import time, not just for
+  # validation — see https://docs.pydantic.dev/latest/api/networks/#pydantic.networks.EmailStr
+  "email-validator>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "datamodel-code-generator>=0.68",
+  "mypy>=1.13",
+  "pytest>=8.0",
+  "ruff>=0.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/goable-io/python-sdk"
+Repository = "https://github.com/goable-io/python-sdk"
+Issues = "https://github.com/goable-io/python-sdk/issues"
+Documentation = "https://goable.io/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/goable_sdk"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "openapi.json", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 110
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = [
+  "E501", # line length handled by ruff format
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/goable_sdk/_models.py" = ["E", "F", "I", "UP", "B", "SIM"] # generated file — never hand-edit, never lint
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+exclude = ["^scripts/", "^tests/"]
+
+[[tool.mypy.overrides]]
+module = "goable_sdk._models"
+# Generated file (datamodel-code-generator), never hand-edited — see
+# scripts/generate_models.py. One known codegen quirk trips strict mode:
+# enum fields with a string-literal default (e.g. `format: Format | None =
+# "json"` instead of `Format.json`) on V1AuditExportGetParametersQuery.
+# Scoped ignore_errors here rather than a hand-edit or a blanket repo-wide
+# mypy relaxation; every hand-written module (client.py, errors.py,
+# __init__.py) stays under full `strict = true`.
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

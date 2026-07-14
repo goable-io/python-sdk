@@ -1,0 +1,110 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    # Only cut a release when something that affects the PUBLISHED package
+    # actually changes. `openapi.json` alone (formatting-only sync) doesn't
+    # trigger a release -- the generated `_models.py` under `src` is what
+    # ships, and that's covered by the `src/**` filter below. Merges that
+    # touch only workflows, tests, or docs (README/CHANGELOG) don't trigger
+    # a spurious release either. To force a release without a code change,
+    # bump the version in `pyproject.toml`.
+    paths:
+      - "src/**"
+      - "pyproject.toml"
+
+# Trusted Publishing (OIDC) needs id-token: write; tagging/release needs
+# contents: write. No PyPI token secret is used or required.
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install -e ".[dev]" build
+
+      - run: ruff check src tests scripts
+      - run: ruff format --check src tests scripts
+      - run: mypy src
+      - run: pytest
+
+      # Version resolution policy (mirrors the TS SDK's release.yml):
+      #   - pyproject.toml > PyPI latest  → publish pyproject.toml's version exactly
+      #     (manual major/minor bump path).
+      #   - pyproject.toml == PyPI latest → auto-bump the patch component
+      #     (routine merge path).
+      #   - pyproject.toml < PyPI latest  → fail loudly (someone forgot to bump).
+      - name: Resolve next version
+        id: bump
+        run: |
+          set -euo pipefail
+          PKG_NAME="goable-sdk"
+          REPO_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          PYPI_LATEST=$(python -m pip index versions "$PKG_NAME" 2>/dev/null | head -1 | sed -E 's/.*\(([0-9.]+)\).*/\1/' || echo "0.0.0")
+          if [ -z "$PYPI_LATEST" ]; then PYPI_LATEST="0.0.0"; fi
+
+          CMP=$(python -c "
+          from packaging.version import Version
+          a, b = Version('$REPO_VERSION'), Version('$PYPI_LATEST')
+          print('gt' if a > b else 'eq' if a == b else 'lt')
+          ")
+
+          echo "pyproject.toml: $REPO_VERSION"
+          echo "PyPI latest:    $PYPI_LATEST"
+          echo "comparison:     $CMP"
+
+          case "$CMP" in
+            gt)
+              NEXT="$REPO_VERSION"
+              echo "Using pyproject.toml version (manual bump): $NEXT"
+              ;;
+            eq)
+              NEXT=$(python -c "
+          from packaging.version import Version
+          v = Version('$PYPI_LATEST')
+          print(f'{v.major}.{v.minor}.{v.micro + 1}')
+          ")
+              echo "Auto-bumping patch: $NEXT"
+              sed -i "s/^version = \".*\"/version = \"$NEXT\"/" pyproject.toml
+              ;;
+            lt)
+              echo "::error::pyproject.toml ($REPO_VERSION) is BEHIND PyPI latest ($PYPI_LATEST). Manual intervention required." >&2
+              exit 1
+              ;;
+          esac
+
+          echo "version=v${NEXT}" >> "$GITHUB_OUTPUT"
+          echo "version_plain=${NEXT}" >> "$GITHUB_OUTPUT"
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: true
+
+      # Tag-only push (no commit back to main). pyproject.toml on main stays
+      # at its declared version; consumers read the real version from PyPI.
+      - name: Create and push tag
+        env:
+          TAG: ${{ steps.bump.outputs.version }}
+        run: |
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.bump.outputs.version }}
+          generate_release_notes: true

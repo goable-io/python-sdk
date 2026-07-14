@@ -1,0 +1,64 @@
+name: Refresh OpenAPI
+
+# Keeps the committed openapi.json in sync with the live public API contract.
+# Fetches https://api.goable.io/docs/openapi.json, regenerates the pydantic
+# models, and opens a PR if anything changed. A maintainer reviews + merges
+# -> triggers a release. Mirrors the TS SDK's refresh-openapi.yml.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily at 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  SPEC_URL: "https://api.goable.io/docs/openapi.json"
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install -e ".[dev]"
+
+      - name: Fetch live contract + normalise + regenerate
+        run: |
+          set -euo pipefail
+          # Fetch the live contract, then run it through the SAME normaliser the
+          # committed snapshot uses (scripts/normalize_spec.py: pins info.version,
+          # stable 2-space formatting + trailing newline). This is what makes the
+          # drift check below fire only on a REAL contract change -- the live route
+          # reports the deployment's own version string, not a contract change.
+          curl -sSf "$SPEC_URL" -o openapi.json
+          python scripts/normalize_spec.py openapi.json
+          python scripts/generate_models.py
+
+      - name: Verify freshness guard still passes
+        run: |
+          ruff check src tests scripts
+          ruff format --check src tests scripts
+          mypy src
+          pytest
+
+      - name: Open PR on drift
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: sync OpenAPI from live API"
+          title: "chore: sync OpenAPI from live API"
+          body: |
+            Automated sync of `openapi.json` from the live contract at
+            `${{ env.SPEC_URL }}`, with regenerated `src/goable_sdk/_models.py`.
+
+            Review the diff, then merge to cut a release.
+          branch: chore/sync-openapi
+          delete-branch: true
+          add-paths: |
+            openapi.json
+            src/goable_sdk/_models.py

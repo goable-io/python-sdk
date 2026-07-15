@@ -13,6 +13,10 @@ on:
     paths:
       - "src/**"
       - "pyproject.toml"
+  # Manual trigger for the first publish (and any out-of-band release): the
+  # push filter above never fires on the repo's initial commit, and there is
+  # no other way to kick a release without a code change.
+  workflow_dispatch: {}
 
 # Trusted Publishing (OIDC) needs id-token: write; tagging/release needs
 # contents: write. No PyPI token secret is used or required.

@@ -183,6 +183,14 @@
                 },
                 "description": {
                   "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "safety",
+                    "feasibility"
+                  ],
+                  "description": "On a gate-trip alert, why the activity is a no-go: 'safety' = dangerous conditions; 'feasibility' = impossible at any skill level (e.g. no rideable wind). Absent on non-gate alerts. Present from catalog v2.4.0."
                 }
               }
             }
@@ -324,6 +332,37 @@
                   "type": "object",
                   "additionalProperties": true,
                   "description": "Present on ensemble requests"
+                },
+                "alerts": {
+                  "type": "array",
+                  "description": "Per-activity scoring alerts (same shape as /v1/score). On a feasibility gate the engine returns score 0 with an empty breakdown, so alerts[].kind = 'feasibility' is the only signal distinguishing 'not feasible' from 'unsafe'.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "info",
+                          "warning",
+                          "critical"
+                        ]
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "safety",
+                          "feasibility"
+                        ]
+                      }
+                    }
+                  }
                 },
                 "error": {
                   "type": "string",

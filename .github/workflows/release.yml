@@ -55,14 +55,19 @@ jobs:
           set -euo pipefail
           PKG_NAME="goable-sdk"
           REPO_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          PYPI_LATEST=$(python -m pip index versions "$PKG_NAME" 2>/dev/null | head -1 | sed -E 's/.*\(([0-9.]+)\).*/\1/' || echo "0.0.0")
+          # `pip index versions` is experimental and emits a deprecation notice;
+          # take ONLY the "<pkg> (x.y.z)" line and strip every whitespace char so
+          # no stray newline/CR can reach the version parser (a trailing newline
+          # here previously broke the interpolated Python string literal below).
+          PYPI_LATEST=$(python -m pip index versions "$PKG_NAME" 2>/dev/null \
+            | sed -nE 's/.*\(([0-9]+\.[0-9]+\.[0-9]+)\).*/\1/p' | head -1 || true)
+          PYPI_LATEST=$(printf '%s' "${PYPI_LATEST:-}" | tr -d '[:space:]')
           if [ -z "$PYPI_LATEST" ]; then PYPI_LATEST="0.0.0"; fi
 
-          CMP=$(python -c "
-          from packaging.version import Version
-          a, b = Version('$REPO_VERSION'), Version('$PYPI_LATEST')
-          print('gt' if a > b else 'eq' if a == b else 'lt')
-          ")
+          # Compare via env vars (NEVER interpolate a captured value into Python
+          # source — that is exactly what broke on the newline). Single-quoted
+          # one-liners so the shell performs no substitution inside the source.
+          CMP=$(REPO_VERSION="$REPO_VERSION" PYPI_LATEST="$PYPI_LATEST" python -c 'import os; from packaging.version import Version as V; a=V(os.environ["REPO_VERSION"]); b=V(os.environ["PYPI_LATEST"]); print("gt" if a>b else "eq" if a==b else "lt")')
 
           echo "pyproject.toml: $REPO_VERSION"
           echo "PyPI latest:    $PYPI_LATEST"
@@ -74,11 +79,7 @@ jobs:
               echo "Using pyproject.toml version (manual bump): $NEXT"
               ;;
             eq)
-              NEXT=$(python -c "
-          from packaging.version import Version
-          v = Version('$PYPI_LATEST')
-          print(f'{v.major}.{v.minor}.{v.micro + 1}')
-          ")
+              NEXT=$(PYPI_LATEST="$PYPI_LATEST" python -c 'import os; from packaging.version import Version as V; v=V(os.environ["PYPI_LATEST"]); print(f"{v.major}.{v.minor}.{v.micro + 1}")')
               echo "Auto-bumping patch: $NEXT"
               sed -i "s/^version = \".*\"/version = \"$NEXT\"/" pyproject.toml
               ;;

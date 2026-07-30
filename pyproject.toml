@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "goable-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python client for the Goable API — suitability scoring for outdoor activities."
 readme = "README.md"
 license = "MIT"

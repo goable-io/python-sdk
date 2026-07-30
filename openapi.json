@@ -152,6 +152,10 @@
                 },
                 "hasData": {
                   "type": "boolean"
+                },
+                "prerequisite": {
+                  "type": "boolean",
+                  "description": "True when this dimension's metric carries a feasibility gate — a HARD prerequisite. Below/above its threshold the activity is impossible and the whole score is gated to 0, rather than this dimension merely being weighted. Lets a go/no-go client tell hard prerequisites from soft weighted dimensions straight from the breakdown. Present from catalog v2.4.0 (false on older catalogs)."
                 }
               }
             }
@@ -179,6 +183,14 @@
                 },
                 "description": {
                   "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "safety",
+                    "feasibility"
+                  ],
+                  "description": "On a gate-trip alert, why the activity is a no-go: 'safety' = dangerous conditions; 'feasibility' = impossible at any skill level (e.g. no rideable wind). Absent on non-gate alerts. Present from catalog v2.4.0."
                 }
               }
             }
@@ -250,28 +262,121 @@
           "results"
         ],
         "properties": {
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "location": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
           "results": {
             "type": "array",
             "items": {
               "type": "object",
               "additionalProperties": true,
               "required": [
-                "activity",
-                "score",
-                "verdict"
+                "activity"
               ],
               "properties": {
                 "activity": {
                   "type": "string"
                 },
+                "profile_slug": {
+                  "type": "string"
+                },
                 "score": {
-                  "type": "number"
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
                 },
                 "verdict": {
                   "$ref": "#/components/schemas/Verdict"
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "breakdown": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "number"
+                      },
+                      "suitability": {
+                        "type": "number"
+                      },
+                      "weight": {
+                        "type": "number"
+                      },
+                      "contribution": {
+                        "type": "number"
+                      },
+                      "hasData": {
+                        "type": "boolean"
+                      },
+                      "prerequisite": {
+                        "type": "boolean",
+                        "description": "True when this dimension's metric carries a feasibility gate (a HARD prerequisite) — see /v1/score breakdown[].prerequisite. Present from catalog v2.4.0."
+                      }
+                    }
+                  }
+                },
+                "distribution": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "Present on ensemble requests"
+                },
+                "alerts": {
+                  "type": "array",
+                  "description": "Per-activity scoring alerts (same shape as /v1/score). On a feasibility gate the engine returns score 0 with an empty breakdown, so alerts[].kind = 'feasibility' is the only signal distinguishing 'not feasible' from 'unsafe'.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "info",
+                          "warning",
+                          "critical"
+                        ]
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "safety",
+                          "feasibility"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "error": {
+                  "type": "string",
+                  "description": "\"ACTIVITY_NOT_FOUND\" when the activity slug does not resolve."
                 }
               }
             }
+          },
+          "rankedByScore": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Activity slugs sorted by score descending; errored activities are omitted."
           }
         }
       },

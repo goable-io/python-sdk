@@ -56,6 +56,8 @@ from ._models import (
     V1ObservationsStationsStationIdRecentGetResponse,
     V1OutcomesPostRequest,
     V1OutcomesPostResponse,
+    V1OutcomesVoidPostRequest,
+    V1OutcomesVoidPostResponse,
     V1ProjectionsAdaptationReportPostRequest,
     V1ProjectionsAdaptationReportPostResponse,
     V1ProjectionsPortfolioPostRequest,
@@ -115,7 +117,7 @@ from .errors import (
     ZodIssueLike,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "DEFAULT_BASE_URL",
@@ -161,6 +163,8 @@ __all__ = [
     "V1ObservationsStationsStationIdRecentGetResponse",
     "V1OutcomesPostRequest",
     "V1OutcomesPostResponse",
+    "V1OutcomesVoidPostRequest",
+    "V1OutcomesVoidPostResponse",
     "V1ProjectionsAdaptationReportPostRequest",
     "V1ProjectionsAdaptationReportPostResponse",
     "V1ProjectionsPortfolioPostRequest",

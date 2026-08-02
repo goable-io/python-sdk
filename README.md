@@ -176,7 +176,8 @@ area:
 | `update_station(station_id, input)` | `PATCH /v1/observations/stations/{stationId}` | partial update |
 | `recent_observations(station_id, query=None)` | `GET /v1/observations/stations/{stationId}/recent` | most-recent observations |
 | `submit_observations(input)` | `POST /v1/observations` | push into the 0-6h window (Pro+) |
-| `submit_outcome(input)` | `POST /v1/outcomes` | standalone outcome (not tied to a scored session) |
+| `submit_outcome(input, idempotency_key=None)` | `POST /v1/outcomes` | standalone outcome (not tied to a scored session) |
+| `void_outcomes(input)` | `POST /v1/outcomes/void` | recall a batch of reported outcomes; returns the voided count |
 
 ### Audit & compliance
 

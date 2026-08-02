@@ -40,6 +40,7 @@ from ._models import (
     V1ObservationsStationsStationIdPatchResponse,
     V1ObservationsStationsStationIdRecentGetResponse,
     V1OutcomesPostResponse,
+    V1OutcomesVoidPostResponse,
     V1ProjectionsAdaptationReportPostResponse,
     V1ProjectionsPortfolioPostResponse,
     V1ProjectionsPostResponse,
@@ -329,14 +330,52 @@ class GoableClient:
             )
         )
 
-    def submit_outcome(self, input: RequestBody) -> V1OutcomesPostResponse:
+    def submit_outcome(
+        self,
+        input: RequestBody,
+        *,
+        idempotency_key: str | None = None,
+    ) -> V1OutcomesPostResponse:
         """Report a standalone activity outcome not tied to a scored session --
         the operator-reported behavioural signal behind the calibration +
         research datasets. Responds 202. Requires the ``outcomes:write``
         scope. For an outcome linked to a specific score, use
         :meth:`report_outcome` instead.
+
+        Pass ``idempotency_key`` so a retried batch submission (after a network
+        timeout) records each outcome exactly once. The optional
+        ``reason_category`` and ``batch_ref`` fields on the request body flow
+        through automatically (see :class:`V1OutcomesPostRequest`); tag a batch
+        with a shared ``batch_ref`` so a later :meth:`void_outcomes` can recall
+        exactly that lot.
         """
-        return V1OutcomesPostResponse.model_validate(self._request("POST", "/v1/outcomes", input))
+        return V1OutcomesPostResponse.model_validate(
+            self._request(
+                "POST",
+                "/v1/outcomes",
+                input,
+                _idempotency_header(idempotency_key),
+            )
+        )
+
+    def void_outcomes(self, input: RequestBody) -> int:
+        """Recall (void) a batch of previously-reported outcomes -- a
+        non-destructive "lot recall". Matching rows are stamped voided (kept
+        for audit) and drop out of the calibration + research signal on the
+        next refresh. Requires the ``outcomes:write`` scope.
+
+        At least one narrowing selector (``batch_ref``, ``audit_log_id``,
+        ``submitted_by_key_id``, ``occurred_from``, ``occurred_to``) is
+        REQUIRED alongside the mandatory ``reason`` -- a recall with no
+        selector is refused ``422`` so it can never blank a tenant's whole
+        history. Idempotent: already-voided rows are skipped. See
+        :class:`V1OutcomesVoidPostRequest` for the full selector set.
+
+        Returns the number of rows newly voided by this recall.
+        """
+        return V1OutcomesVoidPostResponse.model_validate(
+            self._request("POST", "/v1/outcomes/void", input)
+        ).voided
 
     def edge_case(self, input: RequestBody) -> V1IntelligenceEdgeCasePostResponse:
         """LLM edge-case narrative for a marginal score."""

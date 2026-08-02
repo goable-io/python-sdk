@@ -126,6 +126,7 @@ _PATH_FIXTURES: dict[str, Any] = {
         }
     },
     "GET /v1/tenant/llm-key": {"set": True},
+    "POST /v1/outcomes/void": {"voided": 3},
 }
 
 
@@ -335,6 +336,7 @@ class TestFullSurfaceRouting:
         client.submit_outcome(
             {"occurred_at": "2026-07-01T00:00:00Z", "activity_slug": "kitesurfing", "outcome_type": "ran"}
         )
+        client.void_outcomes({"reason": "mislabelled lot", "batch_ref": "lot-42"})
         client.legal_document("terms_of_service")
         client.get_llm_key()
         client.set_llm_key({"apiKey": "sk-ant-xxxxxxxxxxxxxxxxxxxx"})
@@ -363,6 +365,7 @@ class TestFullSurfaceRouting:
             "GET /v1/public/catalog-stats",
             "GET /v1/health/ready",
             "POST /v1/outcomes",
+            "POST /v1/outcomes/void",
             "GET /v1/legal/terms_of_service/current",
             "GET /v1/tenant/llm-key",
             "PUT /v1/tenant/llm-key",
@@ -507,6 +510,36 @@ class TestIdempotencyKeys:
         client.report_outcome("sess-1", {"outcome_type": "ran"}, idempotency_key="idem-xyz")
         assert rec.calls[0].url == "https://x/v1/score/sess-1/outcome"
         assert rec.calls[0].headers["Idempotency-Key"] == "idem-xyz"
+
+    def test_submit_outcome_forwards_the_idempotency_key_header(self) -> None:
+        client, rec = mock_client(json_response({}))
+        client.submit_outcome(
+            {"occurred_at": "2026-07-01T00:00:00Z", "activity_slug": "kitesurfing", "outcome_type": "ran"},
+            idempotency_key="idem-batch-1",
+        )
+        assert rec.calls[0].url == "https://x/v1/outcomes"
+        assert rec.calls[0].headers["Idempotency-Key"] == "idem-batch-1"
+
+    def test_submit_outcome_omits_the_header_when_no_key_is_given(self) -> None:
+        client, rec = mock_client(json_response({}))
+        client.submit_outcome(
+            {"occurred_at": "2026-07-01T00:00:00Z", "activity_slug": "kitesurfing", "outcome_type": "ran"}
+        )
+        assert "Idempotency-Key" not in rec.calls[0].headers
+
+
+# ── outcomes recall ───────────────────────────────────────────────────────
+
+
+class TestVoidOutcomes:
+    def test_void_outcomes_posts_the_body_and_returns_the_voided_count(self) -> None:
+        client, rec = mock_client(json_response({"voided": 7}))
+        voided = client.void_outcomes({"reason": "mislabelled as weather", "batch_ref": "lot-42"})
+        assert voided == 7
+        assert rec.calls[0].method == "POST"
+        assert rec.calls[0].url == "https://x/v1/outcomes/void"
+        assert rec.calls[0].body is not None
+        assert json.loads(rec.calls[0].body) == {"reason": "mislabelled as weather", "batch_ref": "lot-42"}
 
 
 # ── rate-limit headers on errors ─────────────────────────────────────────

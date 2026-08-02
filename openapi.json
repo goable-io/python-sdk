@@ -461,7 +461,12 @@
         "additionalProperties": false,
         "required": [
           "severity",
-          "since_timestamp"
+          "since_timestamp",
+          "cell",
+          "metric",
+          "reference_type",
+          "days_in_decline",
+          "recalibration_triggered"
         ],
         "properties": {
           "severity": {
@@ -475,6 +480,45 @@
           "since_timestamp": {
             "type": "string",
             "format": "date-time"
+          },
+          "cell": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "activity",
+              "sub_spot",
+              "horizon_h"
+            ],
+            "properties": {
+              "activity": {
+                "type": "string"
+              },
+              "sub_spot": {
+                "type": "string",
+                "nullable": true
+              },
+              "horizon_h": {
+                "type": "integer"
+              }
+            }
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "decision_bss"
+            ]
+          },
+          "reference_type": {
+            "type": "string",
+            "enum": [
+              "operator_outcome"
+            ]
+          },
+          "days_in_decline": {
+            "type": "integer"
+          },
+          "recalibration_triggered": {
+            "type": "boolean"
           }
         }
       },
@@ -3638,6 +3682,18 @@
                       "note"
                     ]
                   },
+                  "reason_category": {
+                    "type": "string",
+                    "enum": [
+                      "weather",
+                      "operational",
+                      "customer_demand",
+                      "safety",
+                      "mechanical",
+                      "unknown"
+                    ],
+                    "description": "Structured cause when a session did not run as planned. Only 'weather' and 'safety' outcomes count as evidence against the forecast score and feed weather-suitability calibration; 'operational', 'customer_demand', 'mechanical', and 'unknown' are treated as business facts and excluded. Echoed on the outcome.created webhook."
+                  },
                   "detail": {
                     "type": "object",
                     "additionalProperties": true
@@ -5528,7 +5584,20 @@
     "/v1/outcomes": {
       "post": {
         "summary": "Report a standalone activity outcome",
-        "description": "Submit an observed outcome for an activity session not tied to a specific /v1/score call — the operator-reported behavioural signal behind the calibration + research datasets. For an outcome linked to a specific scored session, use POST /v1/score/{sessionId}/outcome instead. Requires the `outcomes:write` scope (live keys carry it by default; test keys don't).",
+        "description": "Submit an observed outcome for an activity session not tied to a specific /v1/score call — the operator-reported behavioural signal behind the calibration + research datasets. For an outcome linked to a specific scored session, use POST /v1/score/{sessionId}/outcome instead. Requires the `outcomes:write` scope (live keys carry it by default; test keys don't). Supports the optional `Idempotency-Key` header (see parameter description) so a retried batch submission records each outcome exactly once.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "description": "Optional client-generated key (unique per logical request, scoped to your tenant). A retry with the SAME key and the SAME request body replays the original response verbatim without re-executing the request. A retry with the same key and a DIFFERENT body, or one that arrives while the original is still in flight, returns 409 IDEMPOTENCY_KEY_CONFLICT. Claims expire after 24h."
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -5580,6 +5649,24 @@
                       "manual"
                     ],
                     "description": "Stream G equipment-transition signal."
+                  },
+                  "reason_category": {
+                    "type": "string",
+                    "enum": [
+                      "weather",
+                      "operational",
+                      "customer_demand",
+                      "safety",
+                      "mechanical",
+                      "unknown"
+                    ],
+                    "description": "Structured cause when a session did not run as planned. Only 'weather' and 'safety' outcomes count as evidence against the forecast score and feed weather-suitability calibration; 'operational', 'customer_demand', 'mechanical', and 'unknown' are treated as business facts and excluded."
+                  },
+                  "batch_ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "Client-supplied lot / ingestion-run handle. Tag a batch of outcomes with a shared value so a later POST /v1/outcomes/void can recall exactly that lot if it was mislabelled."
                   }
                 }
               }
@@ -5608,8 +5695,130 @@
               }
             }
           },
+          "409": {
+            "description": "IDEMPOTENCY_KEY_CONFLICT — a request with this Idempotency-Key is still in flight, or was already used with a different request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/outcomes/void": {
+      "post": {
+        "summary": "Recall (void) a batch of previously-reported outcomes",
+        "description": "Non-destructive 'lot recall'. When an integration mislabels a batch — e.g. tags operational cancellations as reason_category='weather' — pull that lot back here instead of deleting it. Matching rows are stamped voided (kept for audit) and drop out of the verification MV + cohort signal on the next refresh, so they stop influencing the engine. Scoped to the calling key's tenant. Idempotent — already-voided rows are skipped. At least one narrowing selector (batch_ref, audit_log_id, submitted_by_key_id, occurred_from, occurred_to) is REQUIRED so a recall can never blank a tenant's whole history. Requires the `outcomes:write` scope.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500,
+                    "description": "Why the lot is being recalled — recorded on every voided row for audit."
+                  },
+                  "batch_ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Recall the lot tagged with this batch_ref."
+                  },
+                  "audit_log_id": {
+                    "type": "string",
+                    "description": "Recall the single outcome linked to this scored session."
+                  },
+                  "submitted_by_key_id": {
+                    "type": "string",
+                    "description": "Recall everything a given API key submitted (combine with occurred_from/to)."
+                  },
+                  "occurred_from": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "occurred_to": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "outcome_type": {
+                    "type": "string",
+                    "enum": [
+                      "ran",
+                      "cancelled",
+                      "rescheduled",
+                      "no_show",
+                      "note"
+                    ],
+                    "description": "Narrow the recall to a single outcome_type."
+                  },
+                  "reason_category": {
+                    "type": "string",
+                    "enum": [
+                      "weather",
+                      "operational",
+                      "customer_demand",
+                      "safety",
+                      "mechanical",
+                      "unknown"
+                    ],
+                    "description": "Narrow the recall to a single reason_category — e.g. void only the rows a dev mislabelled 'weather'."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Number of rows newly voided by this recall.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "voided": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "voided"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing scope: outcomes:write",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error, or no narrowing selector provided",
             "content": {
               "application/json": {
                 "schema": {

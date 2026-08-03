@@ -15,6 +15,7 @@ import httpx
 import pytest
 
 from goable_sdk import (
+    KNOWN_ACTIVITY_SLUGS,
     DriftActiveError,
     GoableAPIError,
     GoableClient,
@@ -105,6 +106,7 @@ _PATH_FIXTURES: dict[str, Any] = {
         "zones": [],
         "license": "CC BY 4.0",
         "attribution": "Goable",
+        "publication": None,
     },
     "GET /v1/public/catalog-stats": {
         "computedAt": "2026-07-01T00:00:00Z",
@@ -206,6 +208,37 @@ class TestConstruction:
         client.close()
 
 
+# ── activities / known slugs ──────────────────────────────────────────────
+
+
+class TestActivities:
+    def test_activities_sends_get_with_x_goable_key_and_parses_the_response(self) -> None:
+        client, rec = mock_client(
+            json_response(
+                {
+                    "activities": [
+                        {"slug": "kitesurfing", "display_name": "Kitesurfing", "family": "water"},
+                    ]
+                }
+            ),
+            base_url="https://api.example.com/",
+        )
+        result = client.activities()
+
+        call = rec.calls[0]
+        assert call.method == "GET"
+        assert call.url == "https://api.example.com/v1/activities"
+        assert call.headers["X-Goable-Key"] == KEY
+        assert call.body is None
+        assert result.activities[0].slug == "kitesurfing"
+        assert result.activities[0].display_name == "Kitesurfing"
+        assert result.activities[0].family == "water"
+
+    def test_known_activity_slugs_sanity(self) -> None:
+        assert len(KNOWN_ACTIVITY_SLUGS) == 28
+        assert "kitesurfing" in KNOWN_ACTIVITY_SLUGS
+
+
 # ── request building ─────────────────────────────────────────────────────
 
 
@@ -217,6 +250,7 @@ class TestRequestBuilding:
                     "score": 82,
                     "verdict": "favorable",
                     "confidence": 0.7,
+                    "scoreBasis": "forecast",
                     "breakdown": [],
                     "physics": {},
                     "alerts": [],

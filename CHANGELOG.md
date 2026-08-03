@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-08-03
+
+Contract re-sync to the live API adding activity discovery and a dedicated
+"not feasible" verdict. Additive only — no breaking changes to existing
+methods or models.
+
+### Added
+
+- **`activities()`** — new client method for `GET /v1/activities`, the
+  catalogue's base activity slugs (`slug` / `display_name` / `family`) — the
+  canonical list a caller can pass as `activity`. Public: no API key required
+  (the client still sends one if configured). The server's `GET /v1/profiles`
+  is an alias for the same response.
+- **`KNOWN_ACTIVITY_SLUGS`** (a committed snapshot tuple, refreshed by
+  `scripts/generate_slugs.py`) and **`ActivitySlug`** — a plain `str` alias,
+  intentionally **not** a closed `Literal[...]`. Python's type system has no
+  equivalent of the TS SDK's open literal union (`KnownSlug | (string &
+  {})`), so a closed `Literal` here would wrongly reject a brand-new catalog
+  activity the moment it shipped, before this snapshot caught up. Treat
+  `KNOWN_ACTIVITY_SLUGS` as a runtime autocomplete/validation aid only —
+  `activities()` is the authoritative source.
+- **`not_feasible` verdict** — a new `Verdict` member for a `score: 0` caused
+  by a FEASIBILITY gate (e.g. no rideable wind) rather than a safety gate
+  (lightning, AQI, etc.) — "not doable", not "dangerous". `unsafe` is
+  reserved for the latter.
+- **`scoreBasis` field** (new `ScoreBasis` enum: `forecast` / `gated` /
+  `no_data`) on score responses — a gated `0` now carries the full
+  `breakdown` + `physics` payload instead of a bare zero, so callers can see
+  *why* an activity was gated out.
+- **`did_you_mean` / `valid_slugs`** on the `ACTIVITY_NOT_FOUND` error detail
+  — typo suggestions and the current valid-slug list for a rejected
+  `activity`.
+
+The committed `openapi.json` is byte-for-byte identical (normalized) to the
+canonical `apps/api/openapi.json` on the monorepo's `main`; Pydantic v2
+models regenerated via `datamodel-code-generator`.
+
 ## [0.3.0] - 2026-08-02
 
 Contract re-sync to the live API exposing the new outcomes recall surface.

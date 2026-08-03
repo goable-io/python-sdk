@@ -26,6 +26,7 @@ from ._models import (
     ScoreResponse,
     ScoreSeriesResponse,
     UnderwritingQuoteResponse,
+    V1ActivitiesGetResponse,
     V1AuditExportGetResponse,
     V1DecisionPostResponse,
     V1HealthGetResponse,
@@ -247,6 +248,15 @@ class GoableClient:
         here as a :class:`~goable_sdk.errors.GoableAPIError`.
         """
         return V1HealthReadyGetResponse.model_validate(self._request("GET", "/v1/health/ready"))
+
+    def activities(self) -> V1ActivitiesGetResponse:
+        """Discover the catalogue's base activity slugs (slug / display_name /
+        family) -- the canonical list a caller can pass as ``activity``.
+        Public: no API key required (the client still sends one if
+        configured). The server's ``GET /v1/profiles`` is an alias for the
+        same response.
+        """
+        return V1ActivitiesGetResponse.model_validate(self._request("GET", "/v1/activities"))
 
     def score(self, input: RequestBody) -> ScoreResponse:
         return ScoreResponse.model_validate(self._request("POST", "/v1/score", input))

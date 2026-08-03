@@ -23,8 +23,11 @@ from . import _models as models
 
 # ── per-endpoint request/response models (generated), re-exported for
 # convenient top-level import (e.g. `from goable_sdk import ScoreResponse`) ──
+from ._activity_slugs import KNOWN_ACTIVITY_SLUGS, ActivitySlug
 from ._models import (
+    Activity,
     GeoPoint,
+    ScoreBasis,
     ScoreMultiResponse,
     ScoreResponse,
     ScoreSeriesResponse,
@@ -32,6 +35,7 @@ from ._models import (
     SerialisedPolicy,
     TimeWindow,
     UnderwritingQuoteResponse,
+    V1ActivitiesGetResponse,
     V1AuditExportGetParametersQuery,
     V1AuditExportGetResponse,
     V1DecisionPostRequest,
@@ -117,9 +121,11 @@ from .errors import (
     ZodIssueLike,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
+    "Activity",
+    "ActivitySlug",
     "DEFAULT_BASE_URL",
     "DEFAULT_TIMEOUT_S",
     "DeleteUserDataResult",
@@ -129,9 +135,11 @@ __all__ = [
     "GoableClient",
     "GoableNetworkError",
     "HeaderBag",
+    "KNOWN_ACTIVITY_SLUGS",
     "LegalDocumentKind",
     "RateLimit",
     "RequestBody",
+    "ScoreBasis",
     "ScoreMultiResponse",
     "ScoreResponse",
     "ScoreSeriesResponse",
@@ -139,6 +147,7 @@ __all__ = [
     "SerialisedPolicy",
     "TimeWindow",
     "UnderwritingQuoteResponse",
+    "V1ActivitiesGetResponse",
     "V1AuditExportGetParametersQuery",
     "V1AuditExportGetResponse",
     "V1DecisionPostRequest",

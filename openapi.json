@@ -96,6 +96,7 @@
         "type": "string",
         "enum": [
           "unsafe",
+          "not_feasible",
           "poor",
           "marginal",
           "fair",
@@ -109,6 +110,7 @@
           "score",
           "verdict",
           "confidence",
+          "scoreBasis",
           "breakdown",
           "physics",
           "alerts",
@@ -129,6 +131,15 @@
             "minimum": 0,
             "maximum": 1
           },
+          "scoreBasis": {
+            "type": "string",
+            "enum": [
+              "forecast",
+              "gated",
+              "no_data"
+            ],
+            "description": "Explicit discriminator for why `score`/`verdict` came out the way they did. 'forecast' = the normal path, every profile gate passed. 'gated' = a hard gate (safety or feasibility) tripped — `score` is forced to 0, but `breakdown`/`physics` still carry the real per-dimension conditions (each breakdown entry's `contribution` is zeroed, since nothing contributed to the gated 0, while `suitability`/`hasData` and the physics values stay populated) so a no-go response shows WHY. 'no_data' = no weather samples were available at all, so `breakdown`/`physics` are genuinely empty. Do not infer gate/no-data from `breakdown` emptiness — a gate trip populates `breakdown` too; read this field instead."
+          },
           "breakdown": {
             "type": "array",
             "items": {
@@ -148,7 +159,8 @@
                   "type": "number"
                 },
                 "contribution": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "This dimension's weighted contribution to `score`. Zeroed on a `scoreBasis: \"gated\"` response — nothing contributed to a gated 0 (Σcontribution = 0 = score) — even though `suitability`/`hasData` above still reflect the real conditions."
                 },
                 "hasData": {
                   "type": "boolean"
@@ -335,7 +347,7 @@
                 },
                 "alerts": {
                   "type": "array",
-                  "description": "Per-activity scoring alerts (same shape as /v1/score). On a feasibility gate the engine returns score 0 with an empty breakdown, so alerts[].kind = 'feasibility' is the only signal distinguishing 'not feasible' from 'unsafe'.",
+                  "description": "Per-activity scoring alerts (same shape as /v1/score). verdict = 'not_feasible' already distinguishes an impossible-but-not-dangerous read (e.g. no rideable wind) from 'unsafe'; alerts[].kind = 'feasibility' on the triggering alert carries the same signal for callers that want the underlying reason.",
                   "items": {
                     "type": "object",
                     "additionalProperties": true,
@@ -1631,7 +1643,7 @@
             }
           },
           "404": {
-            "description": "No profile for activity",
+            "description": "No profile for activity. `detail` carries `valid_slugs` (see GET /v1/activities) plus a fuzzy `did_you_mean` suggestion when one catalog slug is a close match.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1665,6 +1677,108 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/activities": {
+      "get": {
+        "summary": "List discoverable base activity slugs",
+        "description": "P2 (activity discovery DX) — the canonical, catalog-derived list of base activity slugs a caller can pass as `activity` to POST /v1/score (and the other activity-resolving routes). Never hardcoded: reflects exactly the base (`spot_kind: \"base\"`) profiles in the loaded catalog, so it can't drift as activities are added. `GET /v1/profiles` is an alias for this same endpoint.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Base activity slugs discoverable in the loaded catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "activities"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "activities": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "slug",
+                          "display_name",
+                          "family"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "slug": {
+                            "type": "string",
+                            "example": "kitesurfing"
+                          },
+                          "display_name": {
+                            "type": "string",
+                            "example": "Kitesurfing"
+                          },
+                          "family": {
+                            "type": "string",
+                            "description": "Activity category (water/snow/air/land/commercial).",
+                            "example": "water"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/profiles": {
+      "get": {
+        "summary": "Alias for GET /v1/activities",
+        "description": "Identical response to GET /v1/activities. Kept as an alias for back-compat with this document's original (pre-/v1/activities) promise of a `GET /v1/profiles` listing endpoint.",
+        "responses": {
+          "200": {
+            "description": "Base activity slugs discoverable in the loaded catalog (same as GET /v1/activities)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "activities"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "activities": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "slug",
+                          "display_name",
+                          "family"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "slug": {
+                            "type": "string",
+                            "example": "kitesurfing"
+                          },
+                          "display_name": {
+                            "type": "string",
+                            "example": "Kitesurfing"
+                          },
+                          "family": {
+                            "type": "string",
+                            "example": "water"
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -1730,7 +1844,7 @@
             }
           },
           "404": {
-            "description": "No profile for activity",
+            "description": "No profile for activity. `detail` carries `valid_slugs` (see GET /v1/activities) plus a fuzzy `did_you_mean` suggestion when one catalog slug is a close match.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2172,7 +2286,7 @@
             }
           },
           "404": {
-            "description": "No profile for activity",
+            "description": "No profile for activity. `detail` carries `valid_slugs` (see GET /v1/activities) plus a fuzzy `did_you_mean` suggestion when one catalog slug is a close match.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2285,7 +2399,7 @@
             }
           },
           "404": {
-            "description": "No profile for activity",
+            "description": "No profile for activity. `detail` carries `valid_slugs` (see GET /v1/activities) plus a fuzzy `did_you_mean` suggestion when one catalog slug is a close match.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2988,7 +3102,7 @@
             }
           },
           "404": {
-            "description": "No profile for activity",
+            "description": "No profile for activity. `detail` carries `valid_slugs` (see GET /v1/activities) plus a fuzzy `did_you_mean` suggestion when one catalog slug is a close match.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5068,53 +5182,22 @@
       "get": {
         "summary": "Public Goable Sustainability Index (no auth, JSON-LD)",
         "security": [],
-        "description": "Public JSON-LD artefact of the Goable Sustainability Index (CC BY 4.0). Session-weighted 0-100 index across zones plus per-zone breakdowns. Governed by k-anonymity (default k≥10) + a 90-day publication lag in the underlying reader — no additional privacy work required for the public surface. Content-Type: application/ld+json. Edge-cached for 5 minutes.",
+        "description": "Public JSON-LD artefact of the Goable Sustainability Index (CC BY 4.0) — the LATEST PUBLISHED, frozen, signed annual report (or the report for `?year=N`). This is a stored, immutable document, not a live on-demand aggregate: no unpublished figure is ever served here. When nothing has been published yet (for the requested year, or at all), the response is the same document shape with zero zones/sessions and `publication: null` — the honest empty-state. Content-Type: application/ld+json. Edge-cached for 5 minutes.",
         "parameters": [
           {
-            "name": "from",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            },
-            "description": "Inclusive start of the reporting period."
-          },
-          {
-            "name": "to",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            },
-            "description": "Exclusive end of the reporting period."
-          },
-          {
-            "name": "zoneKm",
-            "in": "query",
-            "schema": {
-              "type": "number",
-              "exclusiveMinimum": 0,
-              "maximum": 500
-            },
-            "description": "Zone grid cell edge length in km (default: reader-configured)."
-          },
-          {
-            "name": "k",
+            "name": "year",
             "in": "query",
             "schema": {
               "type": "integer",
-              "minimum": 2,
-              "maximum": 1000,
-              "default": 10
+              "minimum": 2000,
+              "maximum": 2100
             },
-            "description": "k-anonymity threshold: zones with fewer than k sessions are suppressed."
+            "description": "Report year. Omit to get the most recently published year."
           }
         ],
         "responses": {
           "200": {
-            "description": "Sustainability Index document (JSON-LD)",
+            "description": "Sustainability Index document (JSON-LD), with publication metadata",
             "content": {
               "application/ld+json": {
                 "schema": {
@@ -5129,7 +5212,8 @@
                     "overall",
                     "zones",
                     "license",
-                    "attribution"
+                    "attribution",
+                    "publication"
                   ],
                   "properties": {
                     "@context": {
@@ -5322,6 +5406,44 @@
                     },
                     "attribution": {
                       "type": "string"
+                    },
+                    "publication": {
+                      "description": "Signing/publication metadata for the frozen report. null when no report has been published for this period (the honest empty-state) — every other field above is then a zero-data placeholder, not a real figure.",
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "year",
+                            "revision",
+                            "publishedAt",
+                            "signedBy",
+                            "methodologyVersion"
+                          ],
+                          "properties": {
+                            "year": {
+                              "type": "integer"
+                            },
+                            "revision": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "publishedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "signedBy": {
+                              "type": "string"
+                            },
+                            "methodologyVersion": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      ]
                     }
                   }
                 }
@@ -5339,7 +5461,7 @@
             }
           },
           "503": {
-            "description": "Sustainability index reader not wired",
+            "description": "Sustainability index publication store not wired",
             "content": {
               "application/json": {
                 "schema": {
@@ -5661,6 +5783,45 @@
                       "unknown"
                     ],
                     "description": "Structured cause when a session did not run as planned. Only 'weather' and 'safety' outcomes count as evidence against the forecast score and feed weather-suitability calibration; 'operational', 'customer_demand', 'mechanical', and 'unknown' are treated as business facts and excluded."
+                  },
+                  "group_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Participants in the session. Captured and disclosed (e.g. average group size) but held out of the sustainability composite pending a site carrying-capacity baseline."
+                  },
+                  "facility_renewable_energy": {
+                    "type": "string",
+                    "enum": [
+                      "renewable",
+                      "mixed",
+                      "grid",
+                      "unknown"
+                    ],
+                    "description": "Operator annual declaration of the facility's energy source."
+                  },
+                  "access_mode": {
+                    "type": "string",
+                    "enum": [
+                      "foot",
+                      "bike",
+                      "public_transport",
+                      "car",
+                      "boat",
+                      "flight",
+                      "mixed",
+                      "unknown"
+                    ],
+                    "description": "How participants got to the session. Highest-materiality but lowest-substantiability signal (an operator estimate) — reported as an estimate, not a measured value."
+                  },
+                  "equipment_provenance": {
+                    "type": "string",
+                    "enum": [
+                      "rental_shared",
+                      "owned",
+                      "mixed",
+                      "unknown"
+                    ],
+                    "description": "Whether the equipment used was rented/shared, owned, or a mix (circularity proxy)."
                   },
                   "batch_ref": {
                     "type": "string",

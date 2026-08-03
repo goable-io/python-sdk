@@ -36,9 +36,29 @@ result = goable.score({
 })
 
 result.score       # 0-100
-result.verdict      # "unsafe" | "poor" | "marginal" | "fair" | "favorable" | "excellent"
+result.verdict      # "unsafe" | "not_feasible" | "poor" | "marginal" | "fair" | "favorable" | "excellent"
 result.confidence
 ```
+
+`verdict` distinguishes an impossible-but-not-dangerous read (`not_feasible`
+— e.g. no rideable wind) from an actually unsafe one (`unsafe`). `scoreBasis`
+(`"forecast"` / `"gated"` / `"no_data"`) says how `score` was produced — a
+`"gated"` `0` still carries the full `breakdown` + `physics` payload, so you
+can see why.
+
+Discover the catalogue's activity slugs at runtime (no API key required):
+
+```python
+catalog = goable.activities()
+[a.slug for a in catalog.activities]  # ["kitesurfing", "surfing", ...]
+```
+
+`goable_sdk.KNOWN_ACTIVITY_SLUGS` is a committed offline snapshot of the same
+slugs (handy for autocomplete/typo-catching without a network call), and
+`goable_sdk.ActivitySlug` is a plain `str` alias for the `activity` field —
+intentionally not a closed `Literal`, since a brand-new catalog activity
+should never fail type-checking just because this snapshot hasn't caught up
+yet. Treat `activities()` as the source of truth.
 
 Inverse query — "where should I go?" — ranks sub-spots for an activity within
 a region:
@@ -199,6 +219,7 @@ area:
 |---|---|---|
 | `health()` | `GET /v1/health` | liveness |
 | `health_ready()` | `GET /v1/health/ready` | readiness (503 → `GoableAPIError`) |
+| `activities()` | `GET /v1/activities` | base activity slugs (slug/display_name/family); `GET /v1/profiles` is an alias |
 | `legal_document(kind)` | `GET /v1/legal/{kind}/current` | current published legal doc |
 | `catalog_stats()` | `GET /v1/public/catalog-stats` | open catalogue coverage stats |
 | `sustainability_index(query)` | `GET /v1/public/sustainability-index` | Goable Sustainability Index (JSON-LD) |

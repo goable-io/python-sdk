@@ -39,6 +39,9 @@ jobs:
           curl -sSf "$SPEC_URL" -o openapi.json
           python scripts/normalize_spec.py openapi.json
           python scripts/generate_models.py
+          # Also refresh the offline activity-slug snapshot from the live
+          # catalog (same live-API reachability as the contract sync above).
+          python scripts/generate_slugs.py
 
       - name: Verify freshness guard still passes
         run: |
@@ -62,3 +65,4 @@ jobs:
           add-paths: |
             openapi.json
             src/goable_sdk/_models.py
+            src/goable_sdk/_activity_slugs.py

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-08-04
+
+Contract re-sync to the live API for the `/v1/score/series` bucket shape.
+
+### Changed
+
+- **`/v1/score/series` bucket (breaking)** — the per-bucket `at` field is
+  renamed to **`timestamp`**, and **`confidence`** + **`alerts`** (same
+  per-bucket alerts shape as `/v1/score/multi`) are now present on every
+  bucket. Callers reading `series[].at` must switch to `series[].timestamp`.
+
+The committed `openapi.json` is byte-for-byte identical (normalized) to the
+canonical `apps/api/openapi.json` on the monorepo's `main`; Pydantic v2
+models regenerated via `datamodel-code-generator`.
+
 ## [0.4.0] - 2026-08-03
 
 Contract re-sync to the live API adding activity discovery and a dedicated

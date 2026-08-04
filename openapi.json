@@ -32,10 +32,7 @@
     "schemas": {
       "GeoPoint": {
         "type": "object",
-        "required": [
-          "lat",
-          "lng"
-        ],
+        "required": ["lat", "lng"],
         "additionalProperties": false,
         "properties": {
           "lat": {
@@ -50,10 +47,7 @@
       },
       "TimeWindow": {
         "type": "object",
-        "required": [
-          "from",
-          "to"
-        ],
+        "required": ["from", "to"],
         "additionalProperties": false,
         "properties": {
           "from": {
@@ -68,9 +62,7 @@
       },
       "Error": {
         "type": "object",
-        "required": [
-          "error"
-        ],
+        "required": ["error"],
         "properties": {
           "error": {
             "type": "string",
@@ -133,11 +125,7 @@
           },
           "scoreBasis": {
             "type": "string",
-            "enum": [
-              "forecast",
-              "gated",
-              "no_data"
-            ],
+            "enum": ["forecast", "gated", "no_data"],
             "description": "Explicit discriminator for why `score`/`verdict` came out the way they did. 'forecast' = the normal path, every profile gate passed. 'gated' = a hard gate (safety or feasibility) tripped — `score` is forced to 0, but `breakdown`/`physics` still carry the real per-dimension conditions (each breakdown entry's `contribution` is zeroed, since nothing contributed to the gated 0, while `suitability`/`hasData` and the physics values stay populated) so a no-go response shows WHY. 'no_data' = no weather samples were available at all, so `breakdown`/`physics` are genuinely empty. Do not infer gate/no-data from `breakdown` emptiness — a gate trip populates `breakdown` too; read this field instead."
           },
           "breakdown": {
@@ -184,11 +172,7 @@
               "properties": {
                 "level": {
                   "type": "string",
-                  "enum": [
-                    "info",
-                    "warning",
-                    "critical"
-                  ]
+                  "enum": ["info", "warning", "critical"]
                 },
                 "code": {
                   "type": "string"
@@ -198,10 +182,7 @@
                 },
                 "kind": {
                   "type": "string",
-                  "enum": [
-                    "safety",
-                    "feasibility"
-                  ],
+                  "enum": ["safety", "feasibility"],
                   "description": "On a gate-trip alert, why the activity is a no-go: 'safety' = dangerous conditions; 'feasibility' = impossible at any skill level (e.g. no rideable wind). Absent on non-gate alerts. Present from catalog v2.4.0."
                 }
               }
@@ -238,9 +219,7 @@
       "ScoreSeriesResponse": {
         "type": "object",
         "additionalProperties": true,
-        "required": [
-          "series"
-        ],
+        "required": ["series"],
         "properties": {
           "series": {
             "type": "array",
@@ -248,11 +227,14 @@
               "type": "object",
               "additionalProperties": true,
               "required": [
+                "timestamp",
                 "score",
-                "verdict"
+                "verdict",
+                "confidence",
+                "alerts"
               ],
               "properties": {
-                "at": {
+                "timestamp": {
                   "type": "string",
                   "format": "date-time"
                 },
@@ -261,6 +243,33 @@
                 },
                 "verdict": {
                   "$ref": "#/components/schemas/Verdict"
+                },
+                "confidence": {
+                  "type": "number"
+                },
+                "alerts": {
+                  "type": "array",
+                  "description": "Per-bucket scoring alerts (same shape as /v1/score and /v1/score-multi). A bucket forced to unsafe/0 carries its gate reason here — alerts[].kind = 'safety' | 'feasibility'.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                      "level": {
+                        "type": "string",
+                        "enum": ["info", "warning", "critical"]
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": ["safety", "feasibility"]
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -270,9 +279,7 @@
       "ScoreMultiResponse": {
         "type": "object",
         "additionalProperties": true,
-        "required": [
-          "results"
-        ],
+        "required": ["results"],
         "properties": {
           "session_id": {
             "type": "string",
@@ -286,9 +293,7 @@
             "items": {
               "type": "object",
               "additionalProperties": true,
-              "required": [
-                "activity"
-              ],
+              "required": ["activity"],
               "properties": {
                 "activity": {
                   "type": "string"
@@ -354,11 +359,7 @@
                     "properties": {
                       "level": {
                         "type": "string",
-                        "enum": [
-                          "info",
-                          "warning",
-                          "critical"
-                        ]
+                        "enum": ["info", "warning", "critical"]
                       },
                       "code": {
                         "type": "string"
@@ -368,10 +369,7 @@
                       },
                       "kind": {
                         "type": "string",
-                        "enum": [
-                          "safety",
-                          "feasibility"
-                        ]
+                        "enum": ["safety", "feasibility"]
                       }
                     }
                   }
@@ -398,12 +396,7 @@
         "properties": {
           "level": {
             "type": "string",
-            "enum": [
-              "sub-spot",
-              "cluster",
-              "region",
-              "base"
-            ]
+            "enum": ["sub-spot", "cluster", "region", "base"]
           },
           "slug": {
             "type": "string"
@@ -419,50 +412,28 @@
           },
           "tier": {
             "type": "integer",
-            "enum": [
-              1,
-              2,
-              3
-            ]
+            "enum": [1, 2, 3]
           },
           "tier_source": {
             "type": "string",
-            "enum": [
-              "catalog",
-              "classifier"
-            ]
+            "enum": ["catalog", "classifier"]
           }
         }
       },
       "CalibrationProvenanceSummary": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "level",
-          "n_local",
-          "shrinkage_weight_from_parent"
-        ],
+        "required": ["level", "n_local", "shrinkage_weight_from_parent"],
         "properties": {
           "level": {
             "type": "string",
-            "enum": [
-              "base",
-              "region",
-              "cluster",
-              "sub-spot"
-            ]
+            "enum": ["base", "region", "cluster", "sub-spot"]
           },
           "n_local": {
-            "type": [
-              "integer",
-              "null"
-            ]
+            "type": ["integer", "null"]
           },
           "shrinkage_weight_from_parent": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "minimum": 0,
             "maximum": 1
           }
@@ -483,11 +454,7 @@
         "properties": {
           "severity": {
             "type": "string",
-            "enum": [
-              "watch",
-              "warning",
-              "critical"
-            ]
+            "enum": ["watch", "warning", "critical"]
           },
           "since_timestamp": {
             "type": "string",
@@ -496,11 +463,7 @@
           "cell": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "activity",
-              "sub_spot",
-              "horizon_h"
-            ],
+            "required": ["activity", "sub_spot", "horizon_h"],
             "properties": {
               "activity": {
                 "type": "string"
@@ -516,15 +479,11 @@
           },
           "metric": {
             "type": "string",
-            "enum": [
-              "decision_bss"
-            ]
+            "enum": ["decision_bss"]
           },
           "reference_type": {
             "type": "string",
-            "enum": [
-              "operator_outcome"
-            ]
+            "enum": ["operator_outcome"]
           },
           "days_in_decline": {
             "type": "integer"
@@ -568,9 +527,7 @@
         "properties": {
           "mode": {
             "type": "string",
-            "enum": [
-              "forecast"
-            ]
+            "enum": ["forecast"]
           },
           "forecast_skill": {
             "type": "number",
@@ -598,12 +555,7 @@
           "skill_calibration": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "applied",
-              "n_train",
-              "cohort_hash",
-              "scalar"
-            ],
+            "required": ["applied", "n_train", "cohort_hash", "scalar"],
             "properties": {
               "applied": {
                 "type": "boolean"
@@ -639,9 +591,7 @@
         "properties": {
           "mode": {
             "type": "string",
-            "enum": [
-              "historical"
-            ]
+            "enum": ["historical"]
           },
           "sample_size_confidence": {
             "type": "number",
@@ -685,9 +635,7 @@
         "properties": {
           "mode": {
             "type": "string",
-            "enum": [
-              "climate"
-            ]
+            "enum": ["climate"]
           },
           "model_spread": {
             "type": "number",
@@ -756,30 +704,17 @@
           },
           "status": {
             "type": "string",
-            "enum": [
-              "bound",
-              "triggered",
-              "settled",
-              "expired"
-            ]
+            "enum": ["bound", "triggered", "settled", "expired"]
           },
           "payoutAmount": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "description": "Null for mixed-currency portfolios; the breakdown lives on the underlying quote."
           },
           "payoutCurrency": {
             "oneOf": [
               {
                 "type": "string",
-                "enum": [
-                  "EUR",
-                  "USD",
-                  "GBP",
-                  "CHF"
-                ]
+                "enum": ["EUR", "USD", "GBP", "CHF"]
               },
               {
                 "type": "null"
@@ -787,27 +722,15 @@
             ]
           },
           "premiumPaid": {
-            "type": [
-              "number",
-              "null"
-            ]
+            "type": ["number", "null"]
           },
           "premiumCollection": {
             "type": "string",
-            "enum": [
-              "external",
-              "stripe",
-              "invoice_due"
-            ]
+            "enum": ["external", "stripe", "invoice_due"]
           },
           "coverageWindow": {
             "type": "object",
-            "required": [
-              "monthFrom",
-              "dayFrom",
-              "monthTo",
-              "dayTo"
-            ],
+            "required": ["monthFrom", "dayFrom", "monthTo", "dayTo"],
             "additionalProperties": false,
             "properties": {
               "monthFrom": {
@@ -852,31 +775,19 @@
             "format": "date-time"
           },
           "triggeredAt": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "settledAt": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "expiredAt": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "settlementReference": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           }
         }
       },
@@ -924,12 +835,7 @@
           },
           "payoutCurrency": {
             "type": "string",
-            "enum": [
-              "EUR",
-              "USD",
-              "GBP",
-              "CHF"
-            ]
+            "enum": ["EUR", "USD", "GBP", "CHF"]
           },
           "detectedAt": {
             "type": "string",
@@ -937,10 +843,7 @@
           },
           "evaluationSource": {
             "type": "string",
-            "enum": [
-              "manual",
-              "scheduled"
-            ]
+            "enum": ["manual", "scheduled"]
           }
         }
       },
@@ -961,20 +864,11 @@
           "policy": {
             "type": "object",
             "additionalProperties": true,
-            "required": [
-              "coverageWindow",
-              "trigger",
-              "historicalYearsRange"
-            ],
+            "required": ["coverageWindow", "trigger", "historicalYearsRange"],
             "properties": {
               "coverageWindow": {
                 "type": "object",
-                "required": [
-                  "monthFrom",
-                  "dayFrom",
-                  "monthTo",
-                  "dayTo"
-                ],
+                "required": ["monthFrom", "dayFrom", "monthTo", "dayTo"],
                 "additionalProperties": false,
                 "properties": {
                   "monthFrom": {
@@ -1007,10 +901,7 @@
               "historicalYearsRange": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                  "from",
-                  "to"
-                ],
+                "required": ["from", "to"],
                 "properties": {
                   "from": {
                     "type": "integer"
@@ -1023,11 +914,7 @@
               "spot": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                  "resolvedProfileSlug",
-                  "point",
-                  "payout"
-                ],
+                "required": ["resolvedProfileSlug", "point", "payout"],
                 "properties": {
                   "resolvedProfileSlug": {
                     "type": "string"
@@ -1040,10 +927,7 @@
                   },
                   "payout": {
                     "type": "object",
-                    "required": [
-                      "amount",
-                      "currency"
-                    ],
+                    "required": ["amount", "currency"],
                     "additionalProperties": false,
                     "properties": {
                       "amount": {
@@ -1052,38 +936,18 @@
                       },
                       "currency": {
                         "type": "string",
-                        "enum": [
-                          "EUR",
-                          "USD",
-                          "GBP",
-                          "CHF"
-                        ]
+                        "enum": ["EUR", "USD", "GBP", "CHF"]
                       }
                     }
                   },
                   "tier": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
-                    "enum": [
-                      1,
-                      2,
-                      3,
-                      null
-                    ],
+                    "type": ["integer", "null"],
+                    "enum": [1, 2, 3, null],
                     "description": "Sub-spot tier (1/2/3) applied to the tier risk multiplier; null when no sub-spot resolved."
                   },
                   "tierSource": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
-                    "enum": [
-                      "catalog",
-                      "classifier",
-                      null
-                    ],
+                    "type": ["string", "null"],
+                    "enum": ["catalog", "classifier", null],
                     "description": "Provenance of the tier: 'catalog' from profile YAML, 'classifier' from L11 confidence=1.0 override, null when no tier applied."
                   }
                 }
@@ -1093,11 +957,7 @@
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "resolvedProfileSlug",
-                    "point",
-                    "payout"
-                  ],
+                  "required": ["resolvedProfileSlug", "point", "payout"],
                   "properties": {
                     "resolvedProfileSlug": {
                       "type": "string"
@@ -1110,10 +970,7 @@
                     },
                     "payout": {
                       "type": "object",
-                      "required": [
-                        "amount",
-                        "currency"
-                      ],
+                      "required": ["amount", "currency"],
                       "additionalProperties": false,
                       "properties": {
                         "amount": {
@@ -1122,38 +979,18 @@
                         },
                         "currency": {
                           "type": "string",
-                          "enum": [
-                            "EUR",
-                            "USD",
-                            "GBP",
-                            "CHF"
-                          ]
+                          "enum": ["EUR", "USD", "GBP", "CHF"]
                         }
                       }
                     },
                     "tier": {
-                      "type": [
-                        "integer",
-                        "null"
-                      ],
-                      "enum": [
-                        1,
-                        2,
-                        3,
-                        null
-                      ],
+                      "type": ["integer", "null"],
+                      "enum": [1, 2, 3, null],
                       "description": "Sub-spot tier (1/2/3) applied to the tier risk multiplier; null when no sub-spot resolved."
                     },
                     "tierSource": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "enum": [
-                        "catalog",
-                        "classifier",
-                        null
-                      ],
+                      "type": ["string", "null"],
+                      "enum": ["catalog", "classifier", null],
                       "description": "Provenance of the tier: 'catalog' from profile YAML, 'classifier' from L11 confidence=1.0 override, null when no tier applied."
                     }
                   }
@@ -1164,9 +1001,7 @@
           "expectedPayouts": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "byCurrency"
-            ],
+            "required": ["byCurrency"],
             "properties": {
               "byCurrency": {
                 "type": "object",
@@ -1327,10 +1162,7 @@
           "expectedPremium": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "byCurrency",
-              "loadingFactor"
-            ],
+            "required": ["byCurrency", "loadingFactor"],
             "properties": {
               "byCurrency": {
                 "type": "object",
@@ -1339,11 +1171,7 @@
                   "EUR": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": [
-                      "fair",
-                      "loaded",
-                      "tierMultiplierWeightedAvg"
-                    ],
+                    "required": ["fair", "loaded", "tierMultiplierWeightedAvg"],
                     "properties": {
                       "fair": {
                         "type": "number"
@@ -1360,11 +1188,7 @@
                   "USD": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": [
-                      "fair",
-                      "loaded",
-                      "tierMultiplierWeightedAvg"
-                    ],
+                    "required": ["fair", "loaded", "tierMultiplierWeightedAvg"],
                     "properties": {
                       "fair": {
                         "type": "number"
@@ -1381,11 +1205,7 @@
                   "GBP": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": [
-                      "fair",
-                      "loaded",
-                      "tierMultiplierWeightedAvg"
-                    ],
+                    "required": ["fair", "loaded", "tierMultiplierWeightedAvg"],
                     "properties": {
                       "fair": {
                         "type": "number"
@@ -1402,11 +1222,7 @@
                   "CHF": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": [
-                      "fair",
-                      "loaded",
-                      "tierMultiplierWeightedAvg"
-                    ],
+                    "required": ["fair", "loaded", "tierMultiplierWeightedAvg"],
                     "properties": {
                       "fair": {
                         "type": "number"
@@ -1436,11 +1252,7 @@
           },
           "advisoryLevel": {
             "type": "string",
-            "enum": [
-              "high_confidence",
-              "moderate_confidence",
-              "low_confidence"
-            ]
+            "enum": ["high_confidence", "moderate_confidence", "low_confidence"]
           },
           "issuable": {
             "type": "boolean"
@@ -1559,10 +1371,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "activity",
-                  "location"
-                ],
+                "required": ["activity", "location"],
                 "additionalProperties": false,
                 "properties": {
                   "activity": {
@@ -1586,11 +1395,7 @@
                   },
                   "rider_skill_level": {
                     "type": "string",
-                    "enum": [
-                      "beginner",
-                      "intermediate",
-                      "expert"
-                    ],
+                    "enum": ["beginner", "intermediate", "expert"],
                     "description": "Skill-conditioned scoring (Pro+)."
                   }
                 }
@@ -1696,20 +1501,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "activities"
-                  ],
+                  "required": ["activities"],
                   "additionalProperties": false,
                   "properties": {
                     "activities": {
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": [
-                          "slug",
-                          "display_name",
-                          "family"
-                        ],
+                        "required": ["slug", "display_name", "family"],
                         "additionalProperties": false,
                         "properties": {
                           "slug": {
@@ -1747,20 +1546,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "activities"
-                  ],
+                  "required": ["activities"],
                   "additionalProperties": false,
                   "properties": {
                     "activities": {
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": [
-                          "slug",
-                          "display_name",
-                          "family"
-                        ],
+                        "required": ["slug", "display_name", "family"],
                         "additionalProperties": false,
                         "properties": {
                           "slug": {
@@ -1795,11 +1588,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "activity",
-                  "location",
-                  "window"
-                ],
+                "required": ["activity", "location", "window"],
                 "additionalProperties": false,
                 "properties": {
                   "activity": {
@@ -1813,11 +1602,7 @@
                   },
                   "granularity": {
                     "type": "string",
-                    "enum": [
-                      "hourly",
-                      "3-hourly",
-                      "daily"
-                    ]
+                    "enum": ["hourly", "3-hourly", "daily"]
                   },
                   "ensemble": {
                     "type": "boolean"
@@ -1875,10 +1660,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "activities",
-                  "location"
-                ],
+                "required": ["activities", "location"],
                 "additionalProperties": false,
                 "properties": {
                   "activities": {
@@ -1959,10 +1741,7 @@
                   },
                   "yearsRange": {
                     "type": "object",
-                    "required": [
-                      "from",
-                      "to"
-                    ],
+                    "required": ["from", "to"],
                     "additionalProperties": false,
                     "properties": {
                       "from": {
@@ -1976,12 +1755,7 @@
                   },
                   "granularity": {
                     "type": "string",
-                    "enum": [
-                      "month",
-                      "week",
-                      "day-of-year",
-                      "daypart"
-                    ]
+                    "enum": ["month", "week", "day-of-year", "daypart"]
                   },
                   "selector": {
                     "type": "object",
@@ -2004,12 +1778,7 @@
                       },
                       "daypart": {
                         "type": "string",
-                        "enum": [
-                          "morning",
-                          "midday",
-                          "afternoon",
-                          "evening"
-                        ]
+                        "enum": ["morning", "midday", "afternoon", "evening"]
                       }
                     }
                   },
@@ -2065,12 +1834,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "spots",
-                  "yearsRange",
-                  "granularity",
-                  "selector"
-                ],
+                "required": ["spots", "yearsRange", "granularity", "selector"],
                 "additionalProperties": false,
                 "properties": {
                   "spots": {
@@ -2079,10 +1843,7 @@
                     "maxItems": 50,
                     "items": {
                       "type": "object",
-                      "required": [
-                        "location",
-                        "activity"
-                      ],
+                      "required": ["location", "activity"],
                       "additionalProperties": false,
                       "properties": {
                         "location": {
@@ -2103,10 +1864,7 @@
                   },
                   "yearsRange": {
                     "type": "object",
-                    "required": [
-                      "from",
-                      "to"
-                    ],
+                    "required": ["from", "to"],
                     "additionalProperties": false,
                     "properties": {
                       "from": {
@@ -2120,12 +1878,7 @@
                   },
                   "granularity": {
                     "type": "string",
-                    "enum": [
-                      "month",
-                      "week",
-                      "day-of-year",
-                      "daypart"
-                    ]
+                    "enum": ["month", "week", "day-of-year", "daypart"]
                   },
                   "selector": {
                     "type": "object",
@@ -2148,12 +1901,7 @@
                       },
                       "daypart": {
                         "type": "string",
-                        "enum": [
-                          "morning",
-                          "midday",
-                          "afternoon",
-                          "evening"
-                        ]
+                        "enum": ["morning", "midday", "afternoon", "evening"]
                       }
                     }
                   },
@@ -2163,10 +1911,7 @@
                     "properties": {
                       "model": {
                         "type": "string",
-                        "enum": [
-                          "none",
-                          "exponential"
-                        ]
+                        "enum": ["none", "exponential"]
                       },
                       "lengthKm": {
                         "type": "number",
@@ -2228,11 +1973,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "activity",
-                  "spot",
-                  "window"
-                ],
+                "required": ["activity", "spot", "window"],
                 "additionalProperties": false,
                 "properties": {
                   "activity": {
@@ -2317,12 +2058,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "user_pseudonym",
-                  "activity",
-                  "spot",
-                  "window"
-                ],
+                "required": ["user_pseudonym", "activity", "spot", "window"],
                 "additionalProperties": false,
                 "properties": {
                   "user_pseudonym": {
@@ -2361,11 +2097,7 @@
                       },
                       "risk_tolerance": {
                         "type": "string",
-                        "enum": [
-                          "conservative",
-                          "moderate",
-                          "aggressive"
-                        ]
+                        "enum": ["conservative", "moderate", "aggressive"]
                       },
                       "owned_gear": {
                         "type": "array",
@@ -2451,9 +2183,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "location"
-                ],
+                "required": ["location"],
                 "additionalProperties": false,
                 "description": "Provide exactly one of scoreResult or session_id.",
                 "properties": {
@@ -2469,17 +2199,11 @@
                   },
                   "locale": {
                     "type": "string",
-                    "enum": [
-                      "en",
-                      "it"
-                    ]
+                    "enum": ["en", "it"]
                   },
                   "model": {
                     "type": "string",
-                    "enum": [
-                      "claude-haiku-4-5-20251001",
-                      "claude-sonnet-4-6"
-                    ]
+                    "enum": ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
                   }
                 }
               }
@@ -2531,10 +2255,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "activity",
-                  "slots"
-                ],
+                "required": ["activity", "slots"],
                 "additionalProperties": false,
                 "properties": {
                   "activity": {
@@ -2549,17 +2270,11 @@
                   },
                   "locale": {
                     "type": "string",
-                    "enum": [
-                      "en",
-                      "it"
-                    ]
+                    "enum": ["en", "it"]
                   },
                   "model": {
                     "type": "string",
-                    "enum": [
-                      "claude-haiku-4-5-20251001",
-                      "claude-sonnet-4-6"
-                    ]
+                    "enum": ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
                   }
                 }
               }
@@ -2611,9 +2326,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "apiKey"
-                ],
+                "required": ["apiKey"],
                 "additionalProperties": false,
                 "properties": {
                   "apiKey": {
@@ -2674,9 +2387,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "set"
-                  ],
+                  "required": ["set"],
                   "properties": {
                     "set": {
                       "type": "boolean"
@@ -2740,18 +2451,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "spot",
-                  "scenarios"
-                ],
+                "required": ["spot", "scenarios"],
                 "additionalProperties": false,
                 "properties": {
                   "spot": {
                     "type": "object",
-                    "required": [
-                      "location",
-                      "activity"
-                    ],
+                    "required": ["location", "activity"],
                     "additionalProperties": false,
                     "properties": {
                       "location": {
@@ -2769,12 +2474,7 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": [
-                        "SSP1-2.6",
-                        "SSP2-4.5",
-                        "SSP3-7.0",
-                        "SSP5-8.5"
-                      ]
+                      "enum": ["SSP1-2.6", "SSP2-4.5", "SSP3-7.0", "SSP5-8.5"]
                     },
                     "minItems": 1
                   },
@@ -2786,10 +2486,7 @@
                   },
                   "baselineDecade": {
                     "type": "string",
-                    "enum": [
-                      "2020s",
-                      "2030s"
-                    ]
+                    "enum": ["2020s", "2030s"]
                   }
                 }
               }
@@ -2841,20 +2538,13 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "coverageWindow",
-                  "trigger"
-                ],
+                "required": ["coverageWindow", "trigger"],
                 "additionalProperties": false,
                 "description": "Provide exactly one of spot or portfolio.",
                 "properties": {
                   "spot": {
                     "type": "object",
-                    "required": [
-                      "point",
-                      "activity",
-                      "payout"
-                    ],
+                    "required": ["point", "activity", "payout"],
                     "additionalProperties": false,
                     "properties": {
                       "point": {
@@ -2869,10 +2559,7 @@
                       },
                       "payout": {
                         "type": "object",
-                        "required": [
-                          "amount",
-                          "currency"
-                        ],
+                        "required": ["amount", "currency"],
                         "additionalProperties": false,
                         "properties": {
                           "amount": {
@@ -2881,12 +2568,7 @@
                           },
                           "currency": {
                             "type": "string",
-                            "enum": [
-                              "EUR",
-                              "USD",
-                              "GBP",
-                              "CHF"
-                            ]
+                            "enum": ["EUR", "USD", "GBP", "CHF"]
                           }
                         }
                       }
@@ -2898,11 +2580,7 @@
                     "maxItems": 50,
                     "items": {
                       "type": "object",
-                      "required": [
-                        "point",
-                        "activity",
-                        "payout"
-                      ],
+                      "required": ["point", "activity", "payout"],
                       "additionalProperties": false,
                       "properties": {
                         "point": {
@@ -2917,10 +2595,7 @@
                         },
                         "payout": {
                           "type": "object",
-                          "required": [
-                            "amount",
-                            "currency"
-                          ],
+                          "required": ["amount", "currency"],
                           "additionalProperties": false,
                           "properties": {
                             "amount": {
@@ -2929,12 +2604,7 @@
                             },
                             "currency": {
                               "type": "string",
-                              "enum": [
-                                "EUR",
-                                "USD",
-                                "GBP",
-                                "CHF"
-                              ]
+                              "enum": ["EUR", "USD", "GBP", "CHF"]
                             }
                           }
                         }
@@ -2943,12 +2613,7 @@
                   },
                   "coverageWindow": {
                     "type": "object",
-                    "required": [
-                      "monthFrom",
-                      "dayFrom",
-                      "monthTo",
-                      "dayTo"
-                    ],
+                    "required": ["monthFrom", "dayFrom", "monthTo", "dayTo"],
                     "additionalProperties": false,
                     "properties": {
                       "monthFrom": {
@@ -2977,17 +2642,12 @@
                     "oneOf": [
                       {
                         "type": "object",
-                        "required": [
-                          "kind",
-                          "scoreBelow"
-                        ],
+                        "required": ["kind", "scoreBelow"],
                         "additionalProperties": false,
                         "properties": {
                           "kind": {
                             "type": "string",
-                            "enum": [
-                              "scoreBelow"
-                            ]
+                            "enum": ["scoreBelow"]
                           },
                           "scoreBelow": {
                             "type": "number",
@@ -3012,17 +2672,12 @@
                       },
                       {
                         "type": "object",
-                        "required": [
-                          "kind",
-                          "verdict"
-                        ],
+                        "required": ["kind", "verdict"],
                         "additionalProperties": false,
                         "properties": {
                           "kind": {
                             "type": "string",
-                            "enum": [
-                              "verdictAtOrBelow"
-                            ]
+                            "enum": ["verdictAtOrBelow"]
                           },
                           "verdict": {
                             "$ref": "#/components/schemas/Verdict"
@@ -3047,10 +2702,7 @@
                   },
                   "historicalYearsRange": {
                     "type": "object",
-                    "required": [
-                      "from",
-                      "to"
-                    ],
+                    "required": ["from", "to"],
                     "additionalProperties": false,
                     "properties": {
                       "from": {
@@ -3216,11 +2868,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "quoteId",
-                  "coverageYear",
-                  "premiumCollection"
-                ],
+                "required": ["quoteId", "coverageYear", "premiumCollection"],
                 "additionalProperties": false,
                 "properties": {
                   "quoteId": {
@@ -3234,11 +2882,7 @@
                   },
                   "premiumCollection": {
                     "type": "string",
-                    "enum": [
-                      "external",
-                      "stripe",
-                      "invoice_due"
-                    ]
+                    "enum": ["external", "stripe", "invoice_due"]
                   },
                   "premiumPaid": {
                     "type": "number",
@@ -3257,10 +2901,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "policy",
-                    "quoteId"
-                  ],
+                  "required": ["policy", "quoteId"],
                   "properties": {
                     "policy": {
                       "$ref": "#/components/schemas/SerialisedPolicy"
@@ -3295,9 +2936,7 @@
                           },
                           "severity": {
                             "type": "string",
-                            "enum": [
-                              "watch"
-                            ]
+                            "enum": ["watch"]
                           },
                           "since": {
                             "type": "string",
@@ -3374,12 +3013,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": [
-                "bound",
-                "triggered",
-                "settled",
-                "expired"
-              ]
+              "enum": ["bound", "triggered", "settled", "expired"]
             }
           },
           {
@@ -3417,9 +3051,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "policies"
-                  ],
+                  "required": ["policies"],
                   "properties": {
                     "policies": {
                       "type": "array",
@@ -3488,10 +3120,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "policy",
-                    "events"
-                  ],
+                  "required": ["policy", "events"],
                   "properties": {
                     "policy": {
                       "$ref": "#/components/schemas/SerialisedPolicy"
@@ -3563,12 +3192,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "policy",
-                    "events",
-                    "inserted",
-                    "skipped"
-                  ],
+                  "required": ["policy", "events", "inserted", "skipped"],
                   "properties": {
                     "policy": {
                       "$ref": "#/components/schemas/SerialisedPolicy"
@@ -3656,9 +3280,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "settlementReference"
-                ],
+                "required": ["settlementReference"],
                 "additionalProperties": false,
                 "properties": {
                   "settlementReference": {
@@ -3683,9 +3305,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "policy"
-                  ],
+                  "required": ["policy"],
                   "properties": {
                     "policy": {
                       "$ref": "#/components/schemas/SerialisedPolicy"
@@ -3781,9 +3401,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "outcome_type"
-                ],
+                "required": ["outcome_type"],
                 "additionalProperties": false,
                 "properties": {
                   "outcome_type": {
@@ -3882,10 +3500,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "activity",
-                  "location"
-                ],
+                "required": ["activity", "location"],
                 "additionalProperties": false,
                 "properties": {
                   "activity": {
@@ -3908,27 +3523,16 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "resolved",
-                    "dimensions"
-                  ],
+                  "required": ["resolved", "dimensions"],
                   "properties": {
                     "resolved": {
                       "type": "object",
                       "additionalProperties": false,
-                      "required": [
-                        "level",
-                        "slug"
-                      ],
+                      "required": ["level", "slug"],
                       "properties": {
                         "level": {
                           "type": "string",
-                          "enum": [
-                            "sub-spot",
-                            "cluster",
-                            "region",
-                            "base"
-                          ]
+                          "enum": ["sub-spot", "cluster", "region", "base"]
                         },
                         "slug": {
                           "type": "string"
@@ -4041,12 +3645,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "activity",
-                  "regionCenter",
-                  "radiusKm",
-                  "topK"
-                ],
+                "required": ["activity", "regionCenter", "radiusKm", "topK"],
                 "additionalProperties": false,
                 "properties": {
                   "activity": {
@@ -4115,10 +3714,7 @@
                             "type": "string"
                           },
                           "personalScore": {
-                            "type": [
-                              "number",
-                              "null"
-                            ]
+                            "type": ["number", "null"]
                           },
                           "personalWeight": {
                             "type": "number"
@@ -4158,9 +3754,7 @@
                           "properties": {
                             "status": {
                               "type": "string",
-                              "enum": [
-                                "no_subspots_in_radius"
-                              ]
+                              "enum": ["no_subspots_in_radius"]
                             },
                             "nearestSubSpot": {
                               "type": "object",
@@ -4176,17 +3770,11 @@
                                   "type": "number"
                                 }
                               },
-                              "required": [
-                                "slug",
-                                "name",
-                                "distanceKm"
-                              ]
+                              "required": ["slug", "name", "distanceKm"]
                             },
                             "suggestedAction": {
                               "type": "string",
-                              "enum": [
-                                "expand_radius"
-                              ]
+                              "enum": ["expand_radius"]
                             },
                             "suggestedRadiusKm": {
                               "type": "number"
@@ -4205,21 +3793,14 @@
                           "properties": {
                             "status": {
                               "type": "string",
-                              "enum": [
-                                "no_subspots_for_activity"
-                              ]
+                              "enum": ["no_subspots_for_activity"]
                             },
                             "suggestedAction": {
                               "type": "string",
-                              "enum": [
-                                "request_coverage"
-                              ]
+                              "enum": ["request_coverage"]
                             }
                           },
-                          "required": [
-                            "status",
-                            "suggestedAction"
-                          ]
+                          "required": ["status", "suggestedAction"]
                         }
                       ]
                     }
@@ -4323,9 +3904,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "location"
-                ],
+                "required": ["location"],
                 "additionalProperties": false,
                 "properties": {
                   "location": {
@@ -4340,17 +3919,11 @@
                   },
                   "locale": {
                     "type": "string",
-                    "enum": [
-                      "en",
-                      "it"
-                    ]
+                    "enum": ["en", "it"]
                   },
                   "model": {
                     "type": "string",
-                    "enum": [
-                      "claude-haiku-4-5-20251001",
-                      "claude-sonnet-4-6"
-                    ]
+                    "enum": ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
                   }
                 }
               }
@@ -4401,10 +3974,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "spots",
-                  "scenarios"
-                ],
+                "required": ["spots", "scenarios"],
                 "additionalProperties": false,
                 "properties": {
                   "spots": {
@@ -4413,10 +3983,7 @@
                     "maxItems": 50,
                     "items": {
                       "type": "object",
-                      "required": [
-                        "location",
-                        "activity"
-                      ],
+                      "required": ["location", "activity"],
                       "additionalProperties": false,
                       "properties": {
                         "location": {
@@ -4435,12 +4002,7 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": [
-                        "SSP1-2.6",
-                        "SSP2-4.5",
-                        "SSP3-7.0",
-                        "SSP5-8.5"
-                      ]
+                      "enum": ["SSP1-2.6", "SSP2-4.5", "SSP3-7.0", "SSP5-8.5"]
                     },
                     "minItems": 1
                   },
@@ -4452,10 +4014,7 @@
                   },
                   "baselineDecade": {
                     "type": "string",
-                    "enum": [
-                      "2020s",
-                      "2030s"
-                    ]
+                    "enum": ["2020s", "2030s"]
                   }
                 }
               }
@@ -4507,10 +4066,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "spots",
-                  "scenarios"
-                ],
+                "required": ["spots", "scenarios"],
                 "additionalProperties": true,
                 "properties": {
                   "spots": {
@@ -4518,10 +4074,7 @@
                     "minItems": 1,
                     "items": {
                       "type": "object",
-                      "required": [
-                        "location",
-                        "activity"
-                      ],
+                      "required": ["location", "activity"],
                       "additionalProperties": true,
                       "properties": {
                         "location": {
@@ -4543,12 +4096,7 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": [
-                        "SSP1-2.6",
-                        "SSP2-4.5",
-                        "SSP3-7.0",
-                        "SSP5-8.5"
-                      ]
+                      "enum": ["SSP1-2.6", "SSP2-4.5", "SSP3-7.0", "SSP5-8.5"]
                     },
                     "minItems": 1
                   },
@@ -4608,10 +4156,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "stationId",
-                  "observations"
-                ],
+                "required": ["stationId", "observations"],
                 "additionalProperties": false,
                 "properties": {
                   "stationId": {
@@ -4625,11 +4170,7 @@
                     "items": {
                       "type": "object",
                       "additionalProperties": false,
-                      "required": [
-                        "observedAt",
-                        "variable",
-                        "value"
-                      ],
+                      "required": ["observedAt", "variable", "value"],
                       "properties": {
                         "observedAt": {
                           "type": "string",
@@ -4766,11 +4307,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "name",
-                  "point",
-                  "variables"
-                ],
+                "required": ["name", "point", "variables"],
                 "additionalProperties": false,
                 "properties": {
                   "name": {
@@ -4802,11 +4339,7 @@
                   },
                   "stationClass": {
                     "type": "string",
-                    "enum": [
-                      "verified",
-                      "unflagged",
-                      "flagged_low_quality"
-                    ]
+                    "enum": ["verified", "unflagged", "flagged_low_quality"]
                   },
                   "updateCadenceMinutes": {
                     "type": "integer",
@@ -4908,11 +4441,7 @@
                   },
                   "stationClass": {
                     "type": "string",
-                    "enum": [
-                      "verified",
-                      "unflagged",
-                      "flagged_low_quality"
-                    ]
+                    "enum": ["verified", "unflagged", "flagged_low_quality"]
                   },
                   "updateCadenceMinutes": {
                     "type": "integer",
@@ -5009,9 +4538,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "observations"
-                  ],
+                  "required": ["observations"],
                   "properties": {
                     "observations": {
                       "type": "array",
@@ -5055,10 +4582,7 @@
                             "type": "number"
                           },
                           "qualityFlag": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
+                            "type": ["string", "null"],
                             "enum": [
                               "verified",
                               "unflagged",
@@ -5112,11 +4636,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "displayName",
-                  "contactEmail",
-                  "acceptTerms"
-                ],
+                "required": ["displayName", "contactEmail", "acceptTerms"],
                 "additionalProperties": false,
                 "properties": {
                   "displayName": {
@@ -5130,9 +4650,7 @@
                   },
                   "acceptTerms": {
                     "type": "boolean",
-                    "enum": [
-                      true
-                    ],
+                    "enum": [true],
                     "description": "Must be true — records ToS / Privacy / DPA acceptance."
                   },
                   "turnstileToken": {
@@ -5222,9 +4740,7 @@
                     },
                     "@type": {
                       "type": "string",
-                      "enum": [
-                        "GoableSustainabilityIndex"
-                      ]
+                      "enum": ["GoableSustainabilityIndex"]
                     },
                     "generatedAt": {
                       "type": "string",
@@ -5233,10 +4749,7 @@
                     "period": {
                       "type": "object",
                       "additionalProperties": false,
-                      "required": [
-                        "from",
-                        "to"
-                      ],
+                      "required": ["from", "to"],
                       "properties": {
                         "from": {
                           "type": "string",
@@ -5350,10 +4863,7 @@
                             "type": "string"
                           },
                           "label": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
+                            "type": ["string", "null"]
                           },
                           "centroid": {
                             "oneOf": [
@@ -5375,18 +4885,12 @@
                             "maximum": 1
                           },
                           "electrificationShare": {
-                            "type": [
-                              "number",
-                              "null"
-                            ],
+                            "type": ["number", "null"],
                             "minimum": 0,
                             "maximum": 1
                           },
                           "seasonalConcentration": {
-                            "type": [
-                              "number",
-                              "null"
-                            ],
+                            "type": ["number", "null"],
                             "minimum": 0,
                             "maximum": 1
                           },
@@ -5400,9 +4904,7 @@
                     },
                     "license": {
                       "type": "string",
-                      "enum": [
-                        "CC BY 4.0"
-                      ]
+                      "enum": ["CC BY 4.0"]
                     },
                     "attribution": {
                       "type": "string"
@@ -5622,12 +5124,7 @@
                           },
                           "family": {
                             "type": "string",
-                            "enum": [
-                              "water",
-                              "snow",
-                              "air",
-                              "land"
-                            ]
+                            "enum": ["water", "snow", "air", "land"]
                           },
                           "displayName": {
                             "type": "string"
@@ -5671,18 +5168,11 @@
                           },
                           "status": {
                             "type": "string",
-                            "enum": [
-                              "seeded",
-                              "partial",
-                              "empty"
-                            ],
+                            "enum": ["seeded", "partial", "empty"],
                             "description": "seeded ≥10 sub-spots · partial 1-9 · empty 0"
                           },
                           "lastUpdatedAt": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
+                            "type": ["string", "null"],
                             "format": "date-time",
                             "description": "Newest commit touching the activity dir (null when no sub-spots yet)"
                           }
@@ -5726,11 +5216,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "occurred_at",
-                  "activity_slug",
-                  "outcome_type"
-                ],
+                "required": ["occurred_at", "activity_slug", "outcome_type"],
                 "additionalProperties": false,
                 "properties": {
                   "occurred_at": {
@@ -5765,11 +5251,7 @@
                   },
                   "equipment_type": {
                     "type": "string",
-                    "enum": [
-                      "electric",
-                      "combustion",
-                      "manual"
-                    ],
+                    "enum": ["electric", "combustion", "manual"],
                     "description": "Stream G equipment-transition signal."
                   },
                   "reason_category": {
@@ -5791,12 +5273,7 @@
                   },
                   "facility_renewable_energy": {
                     "type": "string",
-                    "enum": [
-                      "renewable",
-                      "mixed",
-                      "grid",
-                      "unknown"
-                    ],
+                    "enum": ["renewable", "mixed", "grid", "unknown"],
                     "description": "Operator annual declaration of the facility's energy source."
                   },
                   "access_mode": {
@@ -5815,12 +5292,7 @@
                   },
                   "equipment_provenance": {
                     "type": "string",
-                    "enum": [
-                      "rental_shared",
-                      "owned",
-                      "mixed",
-                      "unknown"
-                    ],
+                    "enum": ["rental_shared", "owned", "mixed", "unknown"],
                     "description": "Whether the equipment used was rented/shared, owned, or a mix (circularity proxy)."
                   },
                   "batch_ref": {
@@ -5889,9 +5361,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "reason"
-                ],
+                "required": ["reason"],
                 "additionalProperties": false,
                 "properties": {
                   "reason": {
@@ -5961,9 +5431,7 @@
                       "type": "integer"
                     }
                   },
-                  "required": [
-                    "voided"
-                  ]
+                  "required": ["voided"]
                 }
               }
             }
@@ -6019,10 +5487,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": [
-                "csv",
-                "json"
-              ],
+              "enum": ["csv", "json"],
               "default": "json"
             }
           },
@@ -6052,10 +5517,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "rows",
-                    "meta"
-                  ],
+                  "required": ["rows", "meta"],
                   "properties": {
                     "rows": {
                       "type": "array",
@@ -6067,12 +5529,7 @@
                     "meta": {
                       "type": "object",
                       "additionalProperties": false,
-                      "required": [
-                        "total",
-                        "limit",
-                        "offset",
-                        "window"
-                      ],
+                      "required": ["total", "limit", "offset", "window"],
                       "properties": {
                         "total": {
                           "type": "integer"
@@ -6193,10 +5650,7 @@
                           "format": "date-time"
                         },
                         "publishedAt": {
-                          "type": [
-                            "string",
-                            "null"
-                          ],
+                          "type": ["string", "null"],
                           "format": "date-time"
                         }
                       },
@@ -6213,9 +5667,7 @@
                       ]
                     }
                   },
-                  "required": [
-                    "document"
-                  ]
+                  "required": ["document"]
                 }
               }
             }

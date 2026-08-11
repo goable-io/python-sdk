@@ -99,6 +99,7 @@
       "ScoreResponse": {
         "type": "object",
         "required": [
+          "session_id",
           "score",
           "verdict",
           "confidence",
@@ -110,6 +111,11 @@
         ],
         "additionalProperties": true,
         "properties": {
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Stable id for this scored session (the `scoring_audit_log` row). Returned on every /v1/score response. Pass it back as `audit_log_id` on POST /v1/outcomes (or as the `:id` on POST /v1/score/:id/outcome) to link the observed outcome to this exact forecast, closing the calibration loop."
+          },
           "score": {
             "type": "number",
             "minimum": 0,
@@ -138,10 +144,12 @@
                   "type": "string"
                 },
                 "value": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "The raw physical reading for this dimension, in its native unit — this is the operational number to show an operator. Units are per-dimension: wind is KNOTS (e.g. `wind_speed`), wave height METRES (`wave` / `wave_height`), wave period SECONDS (`wave_period`), temperature °C (`air_temp_comfort`, `water_temp`), visibility KM (`visibility`), direction DEGREES. (The engine's full derived `summary` block is intentionally not returned; read operational numbers from here.)"
                 },
                 "suitability": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "0-1 desirability of `value` for this activity (the profile curve's output) — good for a per-dimension green/amber/red indicator. Distinct from `value`: `value` is the measurement, `suitability` is how good that measurement is."
                 },
                 "weight": {
                   "type": "number"
@@ -175,10 +183,12 @@
                   "enum": ["info", "warning", "critical"]
                 },
                 "code": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Stable, machine-readable alert identifier — the field to key a UI, an icon map, or a localized message off (NOT `description`, which is English debug prose and is not localized). Deliberately an open string, not a closed enum: engine codes are fixed in source (NO_DATA, MISSING_DIMENSION_DATA, SAFETY_GATE_UNEVALUATED, SCORE_FLOORED, SAFETY_DATA_UNAVAILABLE, FEASIBILITY_GATE_OBSERVATION_OVERRIDE, and the observed-safety codes ACTIVE_THUNDERSTORM_RISK / ELEVATED_LIGHTNING_RISK / AQI_HAZARDOUS / AQI_VERY_UNHEALTHY / AQI_UNHEALTHY_FOR_ENDURANCE), while gate-trip codes come from the activity profile's catalog and are stable within a profiles-catalog major version (e.g. water sports: NO_RIDABLE_WIND, GALE_FORCE_WIND, HEAVY_RAIN, LOW_VISIBILITY, FLAT_NO_SURF, EXTREME_SURF, HIGH_WIND, STRONG_WIND, RIP_CURRENT_HAZARD, HIGH_SEAS, POOR_SURFACE_VISIBILITY, POOR_UNDERWATER_VISIBILITY, STRONG_CURRENT_UNSAFE). Map known codes; keep a generic fallback for codes added by a future catalog version."
                 },
                 "description": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Human-readable English explanation of the alert. Debug / fallback copy only — it is NOT localized. Localize your UI off `code`, not this field."
                 },
                 "kind": {
                   "type": "string",

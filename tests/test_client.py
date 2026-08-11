@@ -247,6 +247,7 @@ class TestRequestBuilding:
         client, rec = mock_client(
             json_response(
                 {
+                    "session_id": "6f2a1c34-0b7e-4e2a-9f3d-2b6a1c34e0b7",
                     "score": 82,
                     "verdict": "favorable",
                     "confidence": 0.7,
@@ -274,6 +275,7 @@ class TestRequestBuilding:
         }
         assert res.score == 82
         assert res.verdict.value == "favorable"
+        assert str(res.session_id) == "6f2a1c34-0b7e-4e2a-9f3d-2b6a1c34e0b7"
 
     def test_trailing_slash_on_base_url_is_normalised(self) -> None:
         client, rec = mock_client(json_response({"status": "ok"}), base_url="https://api.example.com///")

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-08-11
+
+Contract re-sync to the live API: typed `session_id` on the score response.
+
+### Added
+
+- **`ScoreResponse.session_id`** is now a typed, required field — the
+  scored-session id returned on every `/v1/score` response. Pass it back as
+  `audit_log_id` on `POST /v1/outcomes` (or as the `:id` on
+  `POST /v1/score/:id/outcome`) to link an observed outcome to the exact
+  forecast that produced it.
+
+### Changed
+
+- Re-synced `openapi.json` and regenerated `_models.py`. `alerts[].code` is
+  now documented as the stable, machine-readable identifier to key UI and
+  localization off (the `description` is English debug prose, not localized),
+  and `breakdown[].value` / `.suitability` carry native-unit documentation.
+
 ## [0.5.0] - 2026-08-04
 
 Contract re-sync to the live API for the `/v1/score/series` bucket shape.

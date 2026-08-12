@@ -327,7 +327,16 @@ class GoableClient:
         idempotency_key: str | None = None,
     ) -> V1ScoreSessionIdOutcomePostResponse:
         """Close the calibration loop: report the observed outcome of a scored
-        session. Requires the ``outcomes:write`` scope. Pass
+        session. The write is synchronous and durable -- it routes through
+        the same persist path as :meth:`submit_outcome` (the outcome row
+        lands with ``audit_log_id = session_id``) and fires the same
+        ``outcome.created`` webhook before responding; it is not
+        fire-and-forget or merely queued. ``session_id`` must be a
+        ``session_id`` from a :meth:`score` response (a
+        ``scoring_audit_log`` row) -- an unknown id, a cross-tenant id, or a
+        :meth:`score_series` / :meth:`score_multi` session_id (neither writes
+        an audit row) is rejected ``404 SESSION_NOT_FOUND`` and nothing is
+        persisted. Requires the ``outcomes:write`` scope. Pass
         ``idempotency_key`` so a retry after a network timeout can't record
         the same outcome twice.
         """
@@ -357,7 +366,11 @@ class GoableClient:
         ``reason_category`` and ``batch_ref`` fields on the request body flow
         through automatically (see :class:`V1OutcomesPostRequest`); tag a batch
         with a shared ``batch_ref`` so a later :meth:`void_outcomes` can recall
-        exactly that lot.
+        exactly that lot. An optional ``audit_log_id`` links the outcome back
+        to a :meth:`score` session -- an id that resolves to no scored
+        session (unknown, or a non-linkable :meth:`score_series` /
+        :meth:`score_multi` session_id) is rejected ``404
+        AUDIT_LOG_NOT_FOUND`` rather than persisted as an orphan.
         """
         return V1OutcomesPostResponse.model_validate(
             self._request(

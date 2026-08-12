@@ -42,6 +42,17 @@ class HeaderBag(Protocol):
 class GoableAPIError(Exception):
     """Raised when the API returns a non-2xx response.
 
+    ``code`` is intentionally a plain ``str``, not a closed enum/``Literal`` --
+    the API's own contract documents it as an open, growing registry (see the
+    ``Error`` schema's ``error`` enum in ``openapi.json``, canonically the
+    API's ``httpErrors.ts``), and a closed type here would make adding a new
+    code on the server a breaking change for every client. Two codes added in
+    this SDK's 0.7.0 sync: ``SESSION_NOT_FOUND`` (404 from
+    ``POST /v1/score/{id}/outcome`` when ``{id}`` doesn't resolve to a scored
+    session) and ``AUDIT_LOG_NOT_FOUND`` (404 from ``POST /v1/outcomes`` when
+    ``audit_log_id`` doesn't resolve to one). Keep a generic fallback for any
+    code this SDK doesn't know about yet.
+
     Attributes:
         status: HTTP status code.
         code: Machine-readable code from the ``error`` field (e.g. "PAYMENT_REQUIRED").

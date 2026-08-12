@@ -64,8 +64,16 @@ _QUOTE_RESPONSE = {
 
 # Keyed by "METHOD /path" (the literal request path, no query string).
 _PATH_FIXTURES: dict[str, Any] = {
-    "POST /v1/score/series": {"series": []},
-    "POST /v1/score/multi": {"results": []},
+    "POST /v1/score/series": {
+        "series": [],
+        "session_id": "6f2a1c34-0b7e-4e2a-9f3d-2b6a1c34e0b7",
+        "profile_slug": "kitesurfing",
+        "granularity": "hourly",
+    },
+    "POST /v1/score/multi": {
+        "results": [],
+        "session_id": "6f2a1c34-0b7e-4e2a-9f3d-2b6a1c34e0b7",
+    },
     "POST /v1/score/difficulty": {"resolved": {"level": "sub-spot", "slug": "x"}, "dimensions": []},
     "POST /v1/underwriting/quote": _QUOTE_RESPONSE,
     "GET /v1/underwriting/quote/q-1": _QUOTE_RESPONSE,

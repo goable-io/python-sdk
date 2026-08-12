@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-08-12
+
+Contract re-sync to the live API (PR #69, deployed). Additive; existing code keeps working.
+
+### Added
+
+- **Full stable `Error` code enum**, including `SESSION_NOT_FOUND` (404 from
+  `POST /v1/score/:id/outcome` when the id is not a scored session) and
+  `AUDIT_LOG_NOT_FOUND` (404 from `POST /v1/outcomes` when `audit_log_id`
+  does not resolve to a scored session). Error handling can switch on real
+  codes instead of loose strings.
+- **`ScoreSeriesResponse`** now exposes typed `session_id`, `profile_slug`,
+  and `granularity` (all always-returned); **`ScoreMultiResponse.session_id`**
+  is now typed and required. Series/multi session ids are correlation ids
+  only, not linkable as `audit_log_id` (only single `POST /v1/score` ids
+  close the calibration loop).
+
+### Changed
+
+- **Outcome submission is durable/synchronous.** `POST /v1/score/:id/outcome`
+  now persists on the request path (no longer documented as queued) and
+  returns `404 SESSION_NOT_FOUND` for an unknown session. Docstrings corrected.
+- **Confidence semantics.** The score `confidence` is now horizon-decaying
+  (near-term baseline around 0.55-0.62, higher for a nowcast, lower far out)
+  rather than the old near-flat value. No type change; spec description synced.
+
+### Note
+
+- `void_outcomes()` (lot recall) and the outcome `reason_category` / `batch_ref`
+  / `Idempotency-Key` surface shipped earlier and are unchanged here.
+
 ## [0.6.0] - 2026-08-11
 
 Contract re-sync to the live API: typed `session_id` on the score response.

@@ -68,11 +68,13 @@ _PATH_FIXTURES: dict[str, Any] = {
         "series": [],
         "session_id": "6f2a1c34-0b7e-4e2a-9f3d-2b6a1c34e0b7",
         "profile_slug": "kitesurfing",
+        "engine_version": "0.0.0",
         "granularity": "hourly",
     },
     "POST /v1/score/multi": {
         "results": [],
         "session_id": "6f2a1c34-0b7e-4e2a-9f3d-2b6a1c34e0b7",
+        "engine_version": "0.0.0",
     },
     "POST /v1/score/difficulty": {"resolved": {"level": "sub-spot", "slug": "x"}, "dimensions": []},
     "POST /v1/underwriting/quote": _QUOTE_RESPONSE,
@@ -225,7 +227,12 @@ class TestActivities:
             json_response(
                 {
                     "activities": [
-                        {"slug": "kitesurfing", "display_name": "Kitesurfing", "family": "water"},
+                        {
+                            "slug": "kitesurfing",
+                            "display_name": "Kitesurfing",
+                            "family": "water",
+                            "dimensions": [],
+                        },
                     ]
                 }
             ),
@@ -256,9 +263,14 @@ class TestRequestBuilding:
             json_response(
                 {
                     "session_id": "6f2a1c34-0b7e-4e2a-9f3d-2b6a1c34e0b7",
+                    "profile_slug": "kitesurfing",
+                    "engine_version": "0.0.0",
                     "score": 82,
                     "verdict": "favorable",
+                    "dataCoverage": 1.0,
                     "confidence": 0.7,
+                    "confidence_ceiling": 0.85,
+                    "confidence_normalized": 0.82,
                     "scoreBasis": "forecast",
                     "breakdown": [],
                     "physics": {},

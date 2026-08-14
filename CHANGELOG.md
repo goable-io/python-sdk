@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-08-14
+
+Contract re-sync to the live API (deployed) — catches the SDK up through contract
+**v0.6**. Additive at the model level (new optional fields flow through the
+regenerated pydantic models); the only semantic change is `unsafe` reserved for
+danger (see *Changed*).
+
+### Added
+
+- **`confidence_normalized`** and **`confidence_ceiling`** on the score responses
+  (`/v1/score`, `/v1/score-multi`, `/v1/score-series`, forecast AND ensemble
+  reads). `confidence_ceiling` = `profile_maturity × hierarchical_calibration`
+  (the best `confidence` this profile+spot can reach); `confidence_normalized` =
+  server-computed `confidence / confidence_ceiling` ∈ [0, 1]. Both are now
+  required on the score response. Prefer these over a hard-coded absolute
+  confidence threshold.
+- **`engine_version`** (required) on the three score responses — one value
+  tracking both engine behaviour and the API schema.
+- **`dataCoverage`** on `/v1/score-multi` results and `/v1/score-series` buckets
+  (fraction of the window covered by real samples) — previously documented but
+  absent.
+- **`alerts[].source`** = `"observed" | "forecast"` on the lightning safety alert:
+  whether the danger signal is based on real observed strikes near the point or
+  on forecast convective instability only. Uniform across `/v1/score` and
+  `/v1/score-multi`; always `"forecast"` on `/v1/score-series` (observed strikes
+  are a nowcast, not looked up per bucket).
+- **`SAFETY_HAZARD_SUBJECTS`** exported (`("air_quality", "lightning")`) with the
+  `SafetyHazardSubject` type and an `is_safety_hazard_subject()` guard — the
+  known, stable `alerts[].subject` slugs for the two universal safety gates.
+  `subject` stays an open string (a profile gate-trip subject is the tripped
+  gate's metric, e.g. `"wind_speed_kn"`), so this is the KNOWN safety-subject set,
+  not an exhaustive enum.
+- Closed `unit` enum on `GET /v1/activities` and the full frozen `eco` observation
+  schema — both flow through the regenerated models.
+
+### Changed
+
+- **`unsafe` verdict reserved for DANGER only (behaviour).** `unsafe` now means a
+  SAFETY gate trip (a real evaluated hazard); a no-data window is `not_feasible`;
+  a uniformly-poor score that floors to 0 with no gate is `poor`. **Recheck any
+  consumer that colours or branches on the `unsafe` verdict for no-data or poor
+  days.** The `Verdict`/`ScoreBasis` types are unchanged (same members) — only the
+  emission semantics moved.
+- **`unsafe ⟹ scoreBasis == "gated" ⟹ confidence == ceiling == normalized == 1`**
+  now holds uniformly, including on ensemble reads (previously a gated ensemble
+  no-go could report a confidence < 1). A gated no-go is a certain outcome, so a
+  consumer suppressing low-confidence numbers can rely on a gate-trip no-go
+  clearing any confidence floor.
+
+### Fixed
+
+- `goable_sdk.__version__` was stuck at `"0.4.0"` while the package shipped as
+  `0.8.0`; it now tracks `pyproject.toml` (`0.9.0`).
+
 ## [0.8.0] - 2026-08-13
 
 Contract re-sync to the live API (goable monorepo #72, deployed). Additive; existing code keeps working.

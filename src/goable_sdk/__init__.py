@@ -120,8 +120,13 @@ from .errors import (
     RateLimit,
     ZodIssueLike,
 )
+from .safety import (
+    SAFETY_HAZARD_SUBJECTS,
+    SafetyHazardSubject,
+    is_safety_hazard_subject,
+)
 
-__version__ = "0.4.0"
+__version__ = "0.9.0"
 
 __all__ = [
     "Activity",
@@ -139,6 +144,8 @@ __all__ = [
     "LegalDocumentKind",
     "RateLimit",
     "RequestBody",
+    "SAFETY_HAZARD_SUBJECTS",
+    "SafetyHazardSubject",
     "ScoreBasis",
     "ScoreMultiResponse",
     "ScoreResponse",
@@ -217,5 +224,6 @@ __all__ = [
     "WebhookEvent",
     "ZodIssueLike",
     "__version__",
+    "is_safety_hazard_subject",
     "models",
 ]

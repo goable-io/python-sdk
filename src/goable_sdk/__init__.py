@@ -126,7 +126,7 @@ from .safety import (
     is_safety_hazard_subject,
 )
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 
 __all__ = [
     "Activity",

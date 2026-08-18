@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-08-18
+
+Contract re-sync to the live API (deployed). Additive within contract **v0.6** —
+the new field is optional, so existing code keeps working.
+
+### Added
+
+- **`breakdown[].metric`** on the score responses (`/v1/score` and
+  `/v1/score-multi`). Each breakdown row now carries its `metric` — the closed,
+  versioned join key from the fixed `Metric` vocabulary, identical to
+  `dimensions[].metric` (GET /v1/activities) and to a profile gate's
+  `alerts[].subject`. Prefer it over `breakdown[].name` for attaching a unit
+  (join `breakdown[].metric` → `dimensions[].metric` → `dimensions[].unit`) or
+  wiring a per-dimension detail view, so hazard subjects and dimension rows key
+  off ONE vocabulary.
+
+### Changed
+
+- Model docs now state explicitly that `breakdown[].name` / `dimensions[].name`
+  is **NOT end-user-facing text** — a snake_case join key, never a display
+  label. The `dimensions[].name` example was corrected `"Wind"` → `"wind_speed"`
+  (the real runtime value), and `breakdown[].value`'s unit prose collapsed to a
+  single pointer at `dimensions[].unit` (joined on `metric`). Docs-only; no model
+  change.
+
 ## [0.9.0] - 2026-08-14
 
 Contract re-sync to the live API (deployed) — catches the SDK up through contract
